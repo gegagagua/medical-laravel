@@ -101,6 +101,7 @@
 </template>
 
 <script>
+import { useAuthStore } from '../stores/auth';
 import axios from 'axios';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
@@ -116,6 +117,10 @@ export default {
     PasswordInput,
     Checkbox,
     Divider
+  },
+  setup() {
+    const authStore = useAuthStore();
+    return { authStore };
   },
   data() {
     return {
@@ -134,9 +139,11 @@ export default {
       this.error = '';
 
       try {
-        console.log(this.form);
         const response = await axios.post('/api/auth/login', this.form);
-        localStorage.setItem('auth_token', response.data.token);
+        
+        // Use auth store
+        this.authStore.setAuth(response.data.user, response.data.token);
+        
         this.$router.push('/dashboard');
       } catch (err) {
         this.error = err.response?.data?.message || 'შეცდომა მოხდა';

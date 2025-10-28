@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
 import HomePage from '../components/HomePage.vue';
 import AuthPage from '../components/AuthPage.vue';
 import RegisterPage from '../components/RegisterPage.vue';
@@ -67,11 +68,16 @@ const router = createRouter({
 
 // Navigation guard for authentication
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('auth_token');
+  const authStore = useAuthStore();
   
-  if (to.meta.requiresAuth && !token) {
+  // Load user from storage if available
+  if (!authStore.isAuthenticated) {
+    authStore.loadFromStorage();
+  }
+  
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/auth');
-  } else if (to.path === '/auth' && token) {
+  } else if ((to.path === '/auth' || to.path === '/register') && authStore.isAuthenticated) {
     next('/dashboard');
   } else {
     next();

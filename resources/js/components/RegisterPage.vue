@@ -182,6 +182,7 @@
 </template>
 
 <script>
+import { useAuthStore } from '../stores/auth';
 import axios from 'axios';
 import Input from './ui/Input.vue';
 import PasswordInput from './ui/PasswordInput.vue';
@@ -197,6 +198,10 @@ export default {
     Button,
     Checkbox,
     Divider
+  },
+  setup() {
+    const authStore = useAuthStore();
+    return { authStore };
   },
   data() {
     return {
@@ -239,20 +244,23 @@ export default {
         return;
       }
 
-      try {
-        // Transform data to match API expectations
-        const submitData = {
-          first_name: this.formData.firstName,
-          last_name: this.formData.lastName,
-          email: this.formData.email,
-          phone: this.formData.phone,
-          password: this.formData.password,
-          password_confirmation: this.formData.confirmPassword
-        };
+           try {
+             // Transform data to match API expectations
+             const submitData = {
+               first_name: this.formData.firstName,
+               last_name: this.formData.lastName,
+               email: this.formData.email,
+               phone: this.formData.phone,
+               password: this.formData.password,
+               password_confirmation: this.formData.confirmPassword
+             };
 
-        const response = await axios.post('/api/auth/register', submitData);
-        localStorage.setItem('auth_token', response.data.token);
-        this.$router.push('/dashboard');
+             const response = await axios.post('/api/auth/register', submitData);
+             
+             // Use auth store
+             this.authStore.setAuth(response.data.user, response.data.token);
+             
+             this.$router.push('/dashboard');
       } catch (err) {
         this.error = err.response?.data?.message || 'რეგისტრაციისას შეცდომა მოხდა';
       } finally {

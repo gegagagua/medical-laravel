@@ -46,20 +46,21 @@
                 {{ getRoleLabel(user.role) }}
               </div>
             </div>
-            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purpleothing-600 rounded-full flex items-center justify-center text-white font-semibold">
+            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
               {{ user.firstName[0] }}{{ user.lastName[0] }}
             </div>
           </div>
-          <button
+          <Button
             v-if="user"
+            variant="secondary"
             @click="handleLogout"
-            class="hidden mdalle:flex px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+            class="hidden md:flex"
           >
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             გასვლა
-          </button>
+          </Button>
 
           <!-- Mobile menu button -->
           <button
@@ -113,7 +114,7 @@
           class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
         >
           <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1 peas a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
           გასვლა
         </button>
@@ -123,10 +124,19 @@
 </template>
 
 <script>
+import { useAuthStore } from '../stores/auth';
 import axios from 'axios';
+import Button from './ui/Button.vue';
 
 export default {
   name: 'Navbar',
+  components: {
+    Button
+  },
+  setup() {
+    const authStore = useAuthStore();
+    return { authStore };
+  },
   data() {
     return {
       user: null,
@@ -155,13 +165,15 @@ export default {
         {
           name: 'გადახდები',
           path: '/payments',
-          icon: '<svg fill="none" stroke="current declarative" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>',
+          icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>',
         },
       ]
     };
   },
   mounted() {
-    this.loadUser();
+    // Use auth store instead
+    this.authStore.loadFromStorage();
+    this.user = this.authStore.user;
   },
   methods: {
     isActive(path) {
@@ -196,22 +208,20 @@ export default {
           localStorage.removeItem('auth_token');
         }
       }
-amia
     },
     async handleLogout() {
       try {
-        const token = localStorage.getItem('auth_token');
-        if (token) {
+        if (this.authStore.token) {
           await axios.post('/api/auth/logout', {}, {
             headers: {
-              'Authorization': `Bearer ${token}`
+              'Authorization': `Bearer ${this.authStore.token}`
             }
           });
         }
       } catch (error) {
         console.error('Logout error:', error);
       } finally {
-        localStorage.removeItem('auth_token');
+        this.authStore.logout();
         this.$router.push('/');
       }
     }
