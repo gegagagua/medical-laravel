@@ -37,21 +37,21 @@
 
         <!-- User Menu -->
         <div class="flex items-center gap-4">
-          <div v-if="user" class="hidden md:flex items-center gap-2 text-sm">
+          <div v-if="authStore.user" class="hidden md:flex items-center gap-2 text-sm">
             <div class="text-right">
               <div class="font-medium text-gray-900 dark:text-white">
-                {{ user.firstName }} {{ user.lastName }}
+                {{ authStore.user.first_name }} {{ authStore.user.last_name }}
               </div>
               <div class="text-xs text-gray-500 dark:text-gray-400">
-                {{ getRoleLabel(user.role) }}
+                {{ getRoleLabel(authStore.user.role) }}
               </div>
             </div>
             <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-              {{ user.firstName[0] }}{{ user.lastName[0] }}
+              {{ authStore.user.first_name[0] }}{{ authStore.user.last_name[0] }}
             </div>
           </div>
           <Button
-            v-if="user"
+            v-if="authStore.user"
             variant="secondary"
             @click="handleLogout"
             class="hidden md:flex"
@@ -95,17 +95,17 @@
           {{ item.name }}
         </router-link>
       </div>
-      <div v-if="user" class="border-t border-gray-200 dark:border-gray-700 px-4 py-4">
+      <div v-if="authStore.user" class="border-t border-gray-200 dark:border-gray-700 px-4 py-4">
         <div class="flex items-center gap-3 mb-3">
           <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-            {{ user.firstName[0] }}{{ user.lastName[0] }}
+            {{ authStore.user.first_name[0] }}{{ authStore.user.last_name[0] }}
           </div>
           <div>
             <div class="font-medium text-gray-900 dark:text-white">
-              {{ user.firstName }} {{ user.lastName }}
+              {{ authStore.user.first_name }} {{ authStore.user.last_name }}
             </div>
             <div class="text-xs text-gray-500 dark:text-gray-400">
-              {{ getRoleLabel(user.role) }}
+              {{ getRoleLabel(authStore.user.role) }}
             </div>
           </div>
         </div>
@@ -115,9 +115,9 @@
         >
           <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          გასვლა
-        </button>
+            </svg>
+           გასვლა
+          </button>
       </div>
     </div>
   </nav>
@@ -139,7 +139,6 @@ export default {
   },
   data() {
     return {
-      user: null,
       mobileMenuOpen: false,
       navItems: [
         {
@@ -171,9 +170,8 @@ export default {
     };
   },
   mounted() {
-    // Use auth store instead
+    // Load user from storage
     this.authStore.loadFromStorage();
-    this.user = this.authStore.user;
   },
   methods: {
     isActive(path) {
@@ -192,22 +190,6 @@ export default {
         'ADMIN': 'ადმინი'
       };
       return labels[role] || role;
-    },
-    async loadUser() {
-      const token = localStorage.getItem('auth_token');
-      if (token) {
-        try {
-          const response = await axios.get('/api/auth/user', {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          this.user = response.data;
-        } catch (error) {
-          console.error('Failed to load user:', error);
-          localStorage.removeItem('auth_token');
-        }
-      }
     },
     async handleLogout() {
       try {
