@@ -9,6 +9,8 @@
       </div>
       <input
         :id="inputId"
+        :value="modelValue"
+        @input="$emit('update:modelValue', $event.target.value)"
         :class="[
           'block w-full py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition',
           icon ? 'pl-10' : 'pl-3',
@@ -32,11 +34,16 @@ export default {
   name: 'Input',
   inheritAttrs: false,
   props: {
+    modelValue: {
+      type: String,
+      default: ''
+    },
     label: String,
     error: String,
     icon: null,
     rightElement: null
   },
+  emits: ['update:modelValue'],
   computed: {
     inputId() {
       return this.$attrs.id || `input-${Math.random().toString(36).substr(2, 9)}`;
@@ -44,4 +51,3 @@ export default {
   }
 };
 </script>
-

@@ -12,11 +12,23 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('first_name')->after('name');
-            $table->string('last_name')->after('first_name');
-            $table->string('phone')->nullable()->after('email');
-            $table->enum('role', ['PATIENT', 'DOCTOR', 'ADMIN'])->default('PATIENT')->after('password');
-            $table->dropColumn('name');
+            // Check if columns don't exist before adding them
+            if (!Schema::hasColumn('users', 'first_name')) {
+                $table->string('first_name')->nullable();
+            }
+            if (!Schema::hasColumn('users', 'last_name')) {
+                $table->string('last_name')->nullable();
+            }
+            if (!Schema::hasColumn('users', 'phone')) {
+                $table->string('phone')->nullable();
+            }
+            if (!Schema::hasColumn('users', 'role')) {
+                $table->enum('role', ['PATIENT', 'DOCTOR', 'ADMIN'])->default('PATIENT');
+            }
+            // Only drop name if it exists
+            if (Schema::hasColumn('users', 'name')) {
+                $table->dropColumn('name');
+            }
         });
     }
 

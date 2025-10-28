@@ -28,8 +28,7 @@
             id="email"
             type="email"
             label="ელ. ფოსტა"
-            :value="form.email"
-            @input="form.email = $event.target.value"
+            v-model="form.email"
             placeholder="example@email.com"
             required
           >
@@ -44,8 +43,7 @@
           <PasswordInput
             id="password"
             label="პაროლი"
-            :value="form.password"
-            @input="form.password = $event.target.value"
+            v-model="form.password"
             placeholder="••••••••"
             required
           />
@@ -136,6 +134,7 @@ export default {
       this.error = '';
 
       try {
+        console.log(this.form);
         const response = await axios.post('/api/auth/login', this.form);
         localStorage.setItem('auth_token', response.data.token);
         this.$router.push('/dashboard');

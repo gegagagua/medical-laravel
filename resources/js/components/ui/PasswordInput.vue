@@ -1,5 +1,7 @@
 <template>
   <Input
+    :model-value="modelValue"
+    @update:model-value="$emit('update:modelValue', $event)"
     :type="showPassword ? 'text' : 'password'"
     :label="label"
     :error="error"
@@ -37,9 +39,14 @@ export default {
   },
   inheritAttrs: false,
   props: {
+    modelValue: {
+      type: String,
+      default: ''
+    },
     label: String,
     error: String
   },
+  emits: ['update:modelValue'],
   data() {
     return {
       showPassword: false
