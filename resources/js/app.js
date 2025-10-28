@@ -2,10 +2,11 @@ import './bootstrap';
 import '../css/app.css';
 
 import { createApp } from 'vue';
-import AuthPage from './components/AuthPage.vue';
+import App from './App.vue';
+import router from './router';
 
 // Mount the app if there's a root element
 const rootElement = document.getElementById('app');
 if (rootElement) {
-    createApp(AuthPage).mount('#app');
+    createApp(App).use(router).mount('#app');
 }

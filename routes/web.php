@@ -2,18 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
-
-Route::get('/welcome', function () {
-    return view('welcome');
-});
-
-Route::get('/auth', function () {
-    return view('auth');
-});
-
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware('auth:sanctum');
+// Single page application - all routes serve the Vue app
+Route::get('/{any?}', function () {
+    return view('app');
+})->where('any', '.*');
