@@ -4,6 +4,7 @@ import AuthPage from '../components/AuthPage.vue';
 import RegisterPage from '../components/RegisterPage.vue';
 import Dashboard from '../components/Dashboard.vue';
 import Users from '../components/Users.vue';
+import Patients from '../components/Patients.vue';
 
 const routes = [
   {
@@ -31,6 +32,12 @@ const routes = [
     path: '/users',
     name: 'Users',
     component: Users,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/patients',
+    name: 'Patients',
+    component: Patients,
     meta: { requiresAuth: true }
   },
   {
