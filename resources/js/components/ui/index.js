@@ -4,4 +4,4 @@ export { default as Checkbox } from './Checkbox.vue';
 export { default as PasswordInput } from './PasswordInput.vue';
 export { default as Divider } from './Divider.vue';
 export { default as Modal } from './Modal.vue';
-
+export { default as Table } from './Table.vue';

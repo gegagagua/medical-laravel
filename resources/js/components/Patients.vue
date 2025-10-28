@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <Navbar />
     <main class="max-w-[1485px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Stats -->
+      <!-- Stats Cards -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
           <div class="flex items-center justify-between">
@@ -31,66 +31,151 @@
           </div>
         </div>
       </div>
+
+      <!-- Table -->
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">პაციენტების სია</h2>
-        <input v-model="searchQuery" type="text" placeholder="მოძებნა..." class="w-full mb-6 px-4 py-2 border rounded-lg" />
-        <div v-if="loading" class="text-center py-12">იტვირთება...</div>
-        <div v-else class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">სახელი გვარი</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ასაკი</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ტელეფონი</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="patient in filteredPatients" :key="patient.id" @click="handleRowClick(patient)" class="cursor-pointer hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap">{{ patient.id }}</td>
-                <td class="px-6 py-4 whitespace-nowrap">{{ patient.fullName }}</td>
-                <td class="px-6 py-4 whitespace-nowrap">{{ patient.age }} წ.</td>
-                <td class="px-6 py-4 whitespace-nowrap">{{ patient.phone }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="mb-6">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">პაციენტების სია</h2>
+          <p class="text-gray-600 dark:text-gray-400">ყველა დარეგისტრირებული პაციენტის სრული ინფორმაცია</p>
         </div>
+
+        <Table
+          :data="patients"
+          :columns="columns"
+          :page-size="10"
+          :searchable="true"
+          search-placeholder="მოძებნეთ პაციენტი (სახელი, პ/ნ, ტელეფონი)..."
+          empty-message="პაციენტები არ მოიძებნა"
+          :loading="loading"
+        />
       </div>
     </main>
   </div>
 </template>
 
 <script>
+import axios from 'axios';
 import Navbar from './Navbar.vue';
+import Table from './ui/Table.vue';
+
 export default {
   name: 'Patients',
-  components: { Navbar },
+  components: {
+    Navbar,
+    Table
+  },
   data() {
     return {
       patients: [],
       loading: true,
-      searchQuery: ''
+      columns: [
+        {
+          key: 'id',
+          label: 'ID',
+          sortable: true,
+          width: '80px'
+        },
+        {
+          key: 'fullName',
+          label: 'სახელი გვარი',
+          sortable: true,
+          filterable: true,
+          render: (value) => `<span class="font-medium">${value}</span>`
+        },
+        {
+          key: 'idNumber',
+          label: 'პირადი ნომერი',
+          filterable: true,
+          render: (value) => `<span class="font-mono text-sm">${value}</span>`
+        },
+        {
+          key: 'age',
+          label: 'ასაკი',
+          sortable: true,
+          width: '100px',
+          render: (value) => `${value} წ.`
+        },
+        {
+          key: 'gender',
+          label: 'სქესი',
+          sortable: true,
+          filterable: true,
+          width: '120px',
+          render: (value) => {
+            const isMale = value === 'male';
+            return `<span class="px-2 py-1 rounded-full text-xs font-medium ${isMale ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200'}">${isMale ? 'მამრობითი' : 'მდედრობითი'}</span>`;
+          }
+        },
+        {
+          key: 'phone',
+          label: 'ტელეფონი',
+          filterable: true,
+          render: (value) => `<a href="tel:${value}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400">${value}</a>`
+        },
+        {
+          key: 'diagnosis',
+          label: 'დიაგნოზი',
+          filterable: true,
+          render: (value) => value || '-'
+        },
+        {
+          key: 'status',
+          label: 'სტატუსი',
+          sortable: true,
+          filterable: true,
+          width: '120px',
+          render: (value) => {
+            const isActive = value === 'active';
+            return `<span class="px-3 py-1 rounded-full text-xs font-medium ${isActive ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'}">${isActive ? 'აქტიური' : 'არააქტიური'}</span>`;
+          }
+        },
+        {
+          key: 'lastVisit',
+          label: 'ბოლო ვიზიტი',
+          sortable: true,
+          render: (value) => {
+            const date = new Date(value);
+            return date.toLocaleDateString('ka-GE');
+          }
+        }
+      ]
     };
   },
   computed: {
-    filteredPatients() {
-      return this.searchQuery ? this.patients.filter(p => p.fullName.toLowerCase().includes(this.searchQuery.toLowerCase())) : this.patients;
+    activePatients() {
+      return this.patients.filter(p => p.status === 'active').length;
     },
-    activePatients() { return this.patients.filter(p => p.status === 'active').length; },
-    malePatients() { return this.patients.filter(p => p.gender === 'male').length; },
-    femalePatients() { return this.patients.filter(p => p.gender === 'female').length; }
+    malePatients() {
+      return this.patients.filter(p => p.gender === 'male').length;
+    },
+    femalePatients() {
+      return this.patients.filter(p => p.gender === 'female').length;
+    }
   },
   mounted() {
-    this.patients = [
-      { id: 1, fullName: 'გიორგი მამულაშვილი', age: 35, gender: 'male', phone: '+995 555 123 456', status: 'active' },
-      { id: 2, fullName: 'ნინო ბერიძე', age: 28, gender: 'female', phone: '+995 555 234 567', status: 'active' },
-      { id: 3, fullName: 'დავით გელაშვილი', age: 45, gender: 'male', phone: '+995 555 345 678', status: 'active' }
-    ];
-    this.loading = false;
+    this.fetchPatients();
   },
   methods: {
-    handleRowClick(patient) {
-      console.log('Clicked patient:', patient);
+    async fetchPatients() {
+      this.loading = true;
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get('/api/patients', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        this.patients = response.data;
+      } catch (error) {
+        this.patients = [
+          { id: 1, fullName: 'გიორგი მამულაშვილი', idNumber: '01001012345', age: 35, gender: 'male', phone: '+995 555 123 456 flee', status: 'active', diagnosis: 'რუტინული შემოწმება', lastVisit: '2025-01-15T10:30:00' },
+          { id: 2, fullName: 'ნინო ბერიძე', idNumber: '01001098765', age: 28, gender: 'female', phone: '+995 555 234 567', status: 'active', diagnosis: 'გულის შემოწმება', lastVisit: '2025-01-14T15:20:00' },
+          { id: 3, fullName: 'დავით გელაშვილი', idNumber: '01001055555', age: 45, gender: 'male', phone: '+995 555 345 678', status: 'active', diagnosis: 'დიაბეტის კონტროლი', lastVisit: '2025-01-10T09:15:00' },
+          { id: 4, fullName: 'მარიამ ქავთარაძე', idNumber: '01001044444', age: 52, gender: 'female', phone: '+995 555 456 789', status: 'inactive', diagnosis: 'არტრიტი', lastVisit: '2024 fora-12-20T14:45:00' },
+          { id: 5, fullName: 'ლუკა ლობჟანიძე', idNumber: '01001033333', age: 22, gender: 'male', phone: '+995 555 567 890', status: 'active', diagnosis: 'სპორტული ტრავმა', lastVisit: '2025-01-12T11:30:00' },
+          { id: 6, fullName: 'თამარ შენგელია', idNumber: '01001022222', age: 38, gender: 'female', phone: '+995 555 678 901', status: 'active', diagnosis: 'ანემია', lastVisit: '2025-01-13T16:00:00' }
+        ];
+      } finally {
+        this.loading = false;
+      }
     }
   }
 };
