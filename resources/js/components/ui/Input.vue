@@ -1,6 +1,6 @@
 <template>
   <div class="w-full">
-    <label v-if="label" :for="inputId" class="block text-sm font-medium text-gray-700 mb-2">
+    <label v-if="label" :for="inputId" class="block text-sm font-medium text-gray-700 mb-2" style="color: #b1b4bb;">
       {{ label }}
     </label>
     <div class="relative">

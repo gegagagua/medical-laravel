@@ -54,9 +54,25 @@
 
       <!-- Table -->
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
-        <div class="mb-6">
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">პაციენტების სია</h2>
-          <p class="text-gray-600 dark:text-gray-400">ყველა დარეგისტრირებული პაციენტის სრული ინფორმაცია</p>
+        <div class="mb-6 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+          <div>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">პაციენტების სია</h2>
+            <p class="text-gray-600 dark:text-gray-400">ყველა დარეგისტრირებული პაციენტის სრული ინფორმაცია</p>
+          </div>
+          <div class="flex gap-2">
+            <Button variant="secondary" @click="handleImport" class="flex-1 md:flex-initial">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              იმპორტი
+            </Button>
+            <Button variant="primary" @click="openModal" class="flex-1 md:flex-initial">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              ახალი პაციენტი
+            </Button>
+          </div>
         </div>
 
         <Table
@@ -69,6 +85,90 @@
           :loading="loading"
         />
       </div>
+
+      <!-- Add Patient Modal -->
+      <Modal :isOpen="isModalOpen" title="ახალი პაციენტის დამატება" @close="closeModal">
+        <form @submit.prevent="handleSubmit" class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <Input
+              v-model="formData.first_name"
+              label="სახელი"
+              placeholder="გაიყვანე სახელი"
+              required
+            />
+            <Input
+              v-model="formData.last_name"
+              label="გვარი"
+              placeholder="გაიყვანე გვარი"
+              required
+            />
+          </div>
+          
+          <Input
+            v-model="formData.id_number"
+            label="პირადი ნომერი"
+            placeholder="01001012345"
+            required
+          />
+          
+          <div class="grid grid-cols-2 gap-4">
+            <Input
+              v-model="formData.age"
+              label="ასაკი"
+              type="number"
+              placeholder="18"
+              required
+            />
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                სქესი
+              </label>
+              <select
+                v-model="formData.gender"
+                class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                required
+              >
+                <option value="male">მამრობითი</option>
+                <option value="female">მდედრობითი</option>
+              </select>
+            </div>
+          </div>
+
+          <Input
+            v-model="formData.phone"
+            label="ტელეფონი"
+            type="tel"
+            placeholder="+995 555 123 456"
+          />
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              სტატუსი
+            </label>
+            <select
+              v-model="formData.status"
+              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              required
+            >
+              <option value="active">აქტიური</option>
+              <option value="inactive">არააქტიური</option>
+            </select>
+          </div>
+
+          <div v-if="error" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p class="text-sm text-red-800 dark:text-red-300">{{ error }}</p>
+          </div>
+
+          <div class="flex gap-3 pt-4">
+            <Button type="button" variant="secondary" @click="closeModal" :full-width="true">
+              გაუქმება
+            </Button>
+            <Button type="submit" variant="primary" :full-width="true" :disabled="loading">
+              {{ loading ? 'იტვირთება...' : 'დამატება' }}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </main>
   </div>
 </template>
@@ -77,17 +177,35 @@
 import axios from 'axios';
 import Navbar from './Navbar.vue';
 import Table from './ui/Table.vue';
+import Button from './ui/Button.vue';
+import Modal from './ui/Modal.vue';
+import Input from './ui/Input.vue';
 
 export default {
   name: 'Patients',
   components: {
     Navbar,
-    Table
+    Table,
+    Button,
+    Modal,
+    Input
   },
   data() {
     return {
       patients: [],
       loading: true,
+      isModalOpen: false,
+      error: '',
+      formData: {
+        first_name: '',
+        last_name: '',
+        id_number: '',
+        age: '',
+        gender: 'male',
+        phone: '',
+        diagnosis: '',
+        status: 'active'
+      },
       columns: [
         {
           key: 'id',
@@ -133,12 +251,6 @@ export default {
           render: (value) => `<a href="tel:${value}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400">${value}</a>`
         },
         {
-          key: 'diagnosis',
-          label: 'დიაგნოზი',
-          filterable: true,
-          render: (value) => value || '-'
-        },
-        {
           key: 'status',
           label: 'სტატუსი',
           sortable: true,
@@ -177,25 +289,79 @@ export default {
   },
   methods: {
     async fetchPatients() {
-      this.loading = true;
-      try {
-        const token = localStorage.getItem('auth_token');
-        const response = await axios.get('/api/patients', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        this.patients = response.data;
-      } catch (error) {
-        this.patients = [
-          { id: 1, fullName: 'გიორგი მამულაშვილი', idNumber: '01001012345', age: 35, gender: 'male', phone: '+995 555 123 456 flee', status: 'active', diagnosis: 'რუტინული შემოწმება', lastVisit: '2025-01-15T10:30:00' },
+      this.patients = [
+          { id: 1, fullName: 'გიორგი მამულაშვილი', idNumber: '01001012345', age: 35, gender: 'male', phone: '+995 555 123 456', status: 'active', diagnosis: 'რუტინული შემოწმება', lastVisit: '2025-01-15T10:30:00' },
           { id: 2, fullName: 'ნინო ბერიძე', idNumber: '01001098765', age: 28, gender: 'female', phone: '+995 555 234 567', status: 'active', diagnosis: 'გულის შემოწმება', lastVisit: '2025-01-14T15:20:00' },
           { id: 3, fullName: 'დავით გელაშვილი', idNumber: '01001055555', age: 45, gender: 'male', phone: '+995 555 345 678', status: 'active', diagnosis: 'დიაბეტის კონტროლი', lastVisit: '2025-01-10T09:15:00' },
-          { id: 4, fullName: 'მარიამ ქავთარაძე', idNumber: '01001044444', age: 52, gender: 'female', phone: '+995 555 456 789', status: 'inactive', diagnosis: 'არტრიტი', lastVisit: '2024 fora-12-20T14:45:00' },
+          { id: 4, fullName: 'მარიამ ქავთარაძე', idNumber: '01001044444', age: 52, gender: 'female', phone: '+995 555 456 789', status: 'inactive', diagnosis: 'არტრიტი', lastVisit: '2024-12-20T14:45:00' },
           { id: 5, fullName: 'ლუკა ლობჟანიძე', idNumber: '01001033333', age: 22, gender: 'male', phone: '+995 555 567 890', status: 'active', diagnosis: 'სპორტული ტრავმა', lastVisit: '2025-01-12T11:30:00' },
           { id: 6, fullName: 'თამარ შენგელია', idNumber: '01001022222', age: 38, gender: 'female', phone: '+995 555 678 901', status: 'active', diagnosis: 'ანემია', lastVisit: '2025-01-13T16:00:00' }
         ];
+      this.loading = false;
+      // try {
+      //   const token = localStorage.getItem('auth_token');
+      //   const response = await axios.get('/api/patients', {
+      //     headers: { 'Authorization': `Bearer ${token}` }
+      //   });
+      //   this.patients = response.data;
+      // } catch (error) {
+      //   this.patients = [
+      //     { id: 1, fullName: 'გიორგი მამულაშვილი', idNumber: '01001012345', age: 35, gender: 'male', phone: '+995 555 123 456', status: 'active', diagnosis: 'რუტინული შემოწმება', lastVisit: '2025-01-15T10:30:00' },
+      //     { id: 2, fullName: 'ნინო ბერიძე', idNumber: '01001098765', age: 28, gender: 'female', phone: '+995 555 234 567', status: 'active', diagnosis: 'გულის შემოწმება', lastVisit: '2025-01-14T15:20:00' },
+      //     { id: 3, fullName: 'დავით გელაშვილი', idNumber: '01001055555', age: 45, gender: 'male', phone: '+995 555 345 678', status: 'active', diagnosis: 'დიაბეტის კონტროლი', lastVisit: '2025-01-10T09:15:00' },
+      //     { id: 4, fullName: 'მარიამ ქავთარაძე', idNumber: '01001044444', age: 52, gender: 'female', phone: '+995 555 456 789', status: 'inactive', diagnosis: 'არტრიტი', lastVisit: '2024-12-20T14:45:00' },
+      //     { id: 5, fullName: 'ლუკა ლობჟანიძე', idNumber: '01001033333', age: 22, gender: 'male', phone: '+995 555 567 890', status: 'active', diagnosis: 'სპორტული ტრავმა', lastVisit: '2025-01-12T11:30:00' },
+      //     { id: 6, fullName: 'თამარ შენგელია', idNumber: '01001022222', age: 38, gender: 'female', phone: '+995 555 678 901', status: 'active', diagnosis: 'ანემია', lastVisit: '2025-01-13T16:00:00' }
+      //   ];
+      // } finally {
+      //   this.loading = false;
+      // }
+    },
+    openModal() {
+      this.isModalOpen = true;
+      this.error = '';
+      this.formData = {
+        first_name: '',
+        last_name: '',
+        id_number: '',
+        age: '',
+        gender: 'male',
+        phone: '',
+        diagnosis: '',
+        status: 'active'
+      };
+    },
+    closeModal() {
+      this.isModalOpen = false;
+      this.error = '';
+    },
+    async handleSubmit() {
+      this.loading = true;
+      this.error = '';
+
+      try {
+        const token = localStorage.getItem('auth_token');
+        
+        const submitData = {
+          ...this.formData,
+          fullName: `${this.formData.first_name} ${this.formData.last_name}`,
+          idNumber: this.formData.id_number
+        };
+        
+        await axios.post('/api/patients', submitData, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        await this.fetchPatients();
+        this.closeModal();
+      } catch (error) {
+        this.error = error.response?.data?.message || 'შეცდომა მოხდა პაციენტის დამატებისას';
       } finally {
         this.loading = false;
       }
+    },
+    handleImport() {
+      alert('იმპორტის ფუნქცია მალე დაემატება');
     }
   }
 };

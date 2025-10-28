@@ -1,7 +1,7 @@
 <template>
   <div v-if="isOpen" class="fixed inset-0 z-50 overflow-y-auto" @click.self="onClose">
     <!-- Backdrop -->
-    <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" />
+    <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" style="opacity: 0.5;" />
 
     <!-- Modal -->
     <div class="flex min-h-full items-center justify-center p-4">

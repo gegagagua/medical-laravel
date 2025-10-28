@@ -5,14 +5,30 @@
     <!-- Main Content -->
     <main class="max-w-[1485px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
-        <div class="mb-6">
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            ყველა მომხმარებელი
-          </h2>
-          <p class="text-gray-600 dark:text-gray-400">
-            სისტემაში რეგისტრირებული მომხმარებლების სია
-          </p>
+        <div class="mb-6 flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              ყველა მომხმარებელი
+            </h2>
+            <p class="text-gray-600 dark:text-gray-400">
+              სისტემაში რეგისტრირებული მომხმარებლების სია
+            </p>
+          </div>
+          <Button variant="primary" @click="openModal" class="hidden md:flex">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            ახალი მომხმარებელი
+          </Button>
         </div>
+
+        <!-- Mobile Add Button -->
+        <Button variant="primary" @click="openModal" class="md:hidden w-full mb-4">
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          ახალი მომხმარებელი
+        </Button>
 
         <!-- Search Bar -->
         <div class="mb-6">
@@ -159,6 +175,76 @@
           </div>
         </div>
       </div>
+
+      <!-- Add User Modal -->
+      <Modal :isOpen="isModalOpen" title="ახალი მომხმარებლის დამატება" @close="closeModal">
+        <form @submit.prevent="handleSubmit" class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <Input
+              v-model="formData.first_name"
+              label="სახელი"
+              placeholder="განსაზღვრეთ სახელი"
+              required
+            />
+            <Input
+              v-model="formData.last_name"
+              label="გვარი"
+              placeholder="განსაზღვრეთ გვარი"
+              required
+            />
+          </div>
+          
+          <Input
+            v-model="formData.email"
+            type="email"
+            label="ელ. ფოსტა"
+            placeholder="example@email.com"
+            required
+          />
+          
+          <Input
+            v-model="formData.phone"
+            type="tel"
+            label="ტელეფონი"
+            placeholder="+995 555 123 456"
+          />
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              როლი
+            </label>
+            <select
+              v-model="formData.role"
+              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              required
+            >
+              <option value="PATIENT">პაციენტი</option>
+              <option value="DOCTOR">ექიმი</option>
+              <option value="ADMIN">ადმინი</option>
+            </select>
+          </div>
+
+          <PasswordInput
+            v-model="formData.password"
+            label="პაროლი"
+            placeholder="მინიმუმ 8 სიმბოლო"
+            required
+          />
+
+          <div v-if="error" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p class="text-sm text-red-800 dark:text-red-300">{{ error }}</p>
+          </div>
+
+          <div class="flex gap-3 pt-4">
+            <Button type="button" variant="secondary" @click="closeModal" :full-width="true">
+              გაუქმება
+            </Button>
+            <Button type="submit" variant="primary" :full-width="true" :disabled="loading">
+              {{ loading ? 'იტვირთება...' : 'დამატება' }}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </main>
   </div>
 </template>
@@ -166,11 +252,19 @@
 <script>
 import axios from 'axios';
 import Navbar from './Navbar.vue';
+import Button from './ui/Button.vue';
+import Modal from './ui/Modal.vue';
+import Input from './ui/Input.vue';
+import PasswordInput from './ui/PasswordInput.vue';
 
 export default {
   name: 'Users',
   components: {
-    Navbar
+    Navbar,
+    Button,
+    Modal,
+    Input,
+    PasswordInput
   },
   data() {
     return {
@@ -178,7 +272,17 @@ export default {
       loading: true,
       searchQuery: '',
       currentPage: 1,
-      pageSize: 10
+      pageSize: 10,
+      isModalOpen: false,
+      error: '',
+      formData: {
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        role: 'PATIENT',
+        password: ''
+      }
     };
   },
   computed: {
@@ -306,6 +410,45 @@ export default {
     prevPage() {
       if (this.currentPage > 1) {
         this.currentPage--;
+      }
+    },
+    openModal() {
+      this.isModalOpen = true;
+      this.error = '';
+      this.formData = {
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        role: 'PATIENT',
+        password: ''
+      };
+    },
+    closeModal() {
+      this.isModalOpen = false;
+      this.error = '';
+    },
+    async handleSubmit() {
+      this.loading = true;
+      this.error = '';
+
+      try {
+        const token = localStorage.getItem('auth_token');
+        await axios.post('/api/users', this.formData, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        // Refresh users list
+        await this.fetchUsers();
+        
+        // Close modal
+        this.closeModal();
+      } catch (error) {
+        this.error = error.response?.data?.message || 'შეცდომა მოხდა მომხმარებლის დამატებისას';
+      } finally {
+        this.loading = false;
       }
     }
   }
