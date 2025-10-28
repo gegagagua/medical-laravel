@@ -100,10 +100,10 @@
                   {{ user.id }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                  {{ user.firstName }}
+                  {{ user.first_name }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                  {{ user.lastName }}
+                  {{ user.last_name }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                   <a :href="`mailto:${user.email}`" class="text-blue-600 hover:text-blue-800 dark:text-blue-400">

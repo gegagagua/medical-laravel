@@ -86,8 +86,84 @@
         />
       </div>
 
-      <!-- Add Patient Modal -->
-      <Modal :isOpen="isModalOpen" title="ახალი პაციენტის დამატება" @close="closeModal">
+             <!-- Add Visit Modal -->
+             <Modal :isOpen="isVisitModalOpen" title="ახალი ვიზიტის დამატება" @close="closeVisitModal">
+               <form @submit.prevent="submitVisit" class="space-y-4">
+                 <div v-if="visitFormData.patient_name" class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                   <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
+                     პაციენტი: {{ visitFormData.patient_name }}
+                   </p>
+                 </div>
+
+                 <Input
+                   v-model="visitFormData.date"
+                   type="date"
+                   label="თარიღი"
+                   required
+                 />
+
+                 <div>
+                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                     განყოფილება *
+                   </label>
+                   <input
+                     v-model="visitFormData.department"
+                     type="text"
+                     placeholder="მაგ: ენდოკრინოლოგია"
+                     class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                     required
+                   />
+                 </div>
+
+                 <div>
+                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                     ექიმი / მედპერ. *
+                   </label>
+                   <input
+                     v-model="visitFormData.doctor"
+                     type="text"
+                     placeholder="მაგ: ლომთაძე, ნინო"
+                     class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                     required
+                   />
+                 </div>
+
+                 <Input
+                   v-model="visitFormData.time"
+                   type="time"
+                   label="მიღების საათი"
+                   required
+                 />
+
+                 <div>
+                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                     შენიშვნა
+                   </label>
+                   <textarea
+                     v-model="visitFormData.notes"
+                     rows="3"
+                     placeholder="დამატებითი ინფორმაცია..."
+                     class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                   ></textarea>
+                 </div>
+
+                 <div v-if="error" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                   <p class="text-sm text-red-800 dark:text-red-300">{{ error }}</p>
+                 </div>
+
+                 <div class="flex gap-3 pt-4">
+                   <Button type="button" variant="secondary" @click="closeVisitModal" :full-width="true">
+                     გაუქმება
+                   </Button>
+                   <Button type="submit" variant="primary" :full-width="true" :disabled="loading">
+                     {{ loading ? 'შექმნა...' : 'ვიზიტის შექმნა' }}
+                   </Button>
+                 </div>
+               </form>
+             </Modal>
+
+             <!-- Add Patient Modal -->
+             <Modal :isOpen="isModalOpen" title="ახალი პაციენტის დამატება" @close="closeModal">
         <form @submit.prevent="handleSubmit" class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <Input
@@ -191,21 +267,30 @@ export default {
     Input
   },
   data() {
-    return {
-      patients: [],
-      loading: true,
-      isModalOpen: false,
-      error: '',
-      formData: {
-        first_name: '',
-        last_name: '',
-        id_number: '',
-        age: '',
-        gender: 'male',
-        phone: '',
-        diagnosis: '',
-        status: 'active'
-      },
+      return {
+        patients: [],
+        loading: true,
+        isModalOpen: false,
+        isVisitModalOpen: false,
+        error: '',
+        formData: {
+          first_name: '',
+          last_name: '',
+          id_number: '',
+          age: '',
+          gender: 'male',
+          phone: '',
+          diagnosis: '',
+          status: 'active'
+        },
+        visitFormData: {
+          patient_id: '',
+          date: '',
+          department: '',
+          doctor: '',
+          time: '',
+          notes: ''
+        },
       columns: [
         {
           key: 'id',
@@ -269,6 +354,18 @@ export default {
             const date = new Date(value);
             return date.toLocaleDateString('ka-GE');
           }
+        },
+        {
+          key: 'actions',
+          label: 'მოქმედება',
+          width: '120px',
+          render: (_, row) => `
+            <button 
+              onclick="window.patientsComponent?.openVisitModal(${row.id})"
+              class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium transition">
+              ახალი ვიზიტი
+            </button>
+          `
         }
       ]
     };
@@ -286,6 +383,8 @@ export default {
   },
   mounted() {
     this.fetchPatients();
+    // Make component accessible for inline button handlers
+    window.patientsComponent = this;
   },
   methods: {
     async fetchPatients() {
@@ -362,6 +461,84 @@ export default {
     },
     handleImport() {
       alert('იმპორტის ფუნქცია მალე დაემატება');
+    },
+    openVisitModal(patientId) {
+      const patient = this.patients.find(p => p.id === patientId);
+      if (!patient) return;
+
+      // Set current date
+      const today = new Date();
+      const dateStr = today.toISOString().split('T')[0];
+      
+      this.visitFormData = {
+        patient_id: patientId,
+        patient_name: patient.fullName,
+        date: dateStr,
+        department: '',
+        doctor: '',
+        time: '',
+        notes: ''
+      };
+      this.isVisitModalOpen = true;
+      this.error = '';
+    },
+    closeVisitModal() {
+      this.isVisitModalOpen = false;
+      this.error = '';
+      this.visitFormData = {
+        patient_id: '',
+        date: '',
+        department: '',
+        doctor: '',
+        time: '',
+        notes: ''
+      };
+    },
+    async createVisit(patientId) {
+      const patient = this.patients.find(p => p.id === patientId);
+      if (!patient) return;
+
+      this.openVisitModal(patientId);
+    },
+    async submitVisit() {
+      this.loading = true;
+      this.error = '';
+
+      try {
+        // Validate required fields
+        if (!this.visitFormData.date || !this.visitFormData.department || 
+            !this.visitFormData.doctor || !this.visitFormData.time) {
+          this.error = 'გთხოვთ შეავსოთ ყველა აუცილებელი ველი';
+          this.loading = false;
+          return;
+        }
+
+        const token = localStorage.getItem('auth_token');
+        const patient = this.patients.find(p => p.id === this.visitFormData.patient_id);
+        
+        const appointmentData = {
+          patient_id: this.visitFormData.patient_id,
+          patient_name: patient ? patient.fullName : '',
+          doctor_name: this.visitFormData.doctor,
+          department: this.visitFormData.department,
+          date: this.visitFormData.date,
+          time: this.visitFormData.time,
+          status: 'pending',
+          notes: this.visitFormData.notes || ''
+        };
+
+        await axios.post('/api/appointments', appointmentData, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        this.closeVisitModal();
+        this.$router.push('/visits');
+      } catch (error) {
+        console.error('Failed to create visit:', error);
+        this.error = error.response?.data?.message || 'შეცდომა მოხდა ვიზიტის შექმნისას';
+      } finally {
+        this.loading = false;
+      }
     }
   }
 };
