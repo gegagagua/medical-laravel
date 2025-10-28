@@ -6,6 +6,7 @@ import Dashboard from '../components/Dashboard.vue';
 import Users from '../components/Users.vue';
 import Patients from '../components/Patients.vue';
 import Payments from '../components/Payments.vue';
+import Visits from '../components/Visits.vue';
 
 const routes = [
   {
@@ -45,6 +46,12 @@ const routes = [
     path: '/payments',
     name: 'Payments',
     component: Payments,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/visits',
+    name: 'Visits',
+    component: Visits,
     meta: { requiresAuth: true }
   },
   {

@@ -17,7 +17,7 @@
             </div>
           </div>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex items-center justify-between">
           <div>
             <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">აქტიური</p>
             <p class="text-3xl font-bold text-green-600">{{ activePatients }}</p>
@@ -28,7 +28,7 @@
             </svg>
           </div>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex items-center justify-between">
           <div>
             <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">მამრობითი</p>
             <p class="text-3xl font-bold text-blue-600">{{ malePatients }}</p>
@@ -39,7 +39,7 @@
             </svg>
           </div>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex items-center justify-between">
           <div>
             <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">მდედრობითი</p>
             <p class="text-3xl font-bold text-pink-600">{{ femalePatients }}</p>
