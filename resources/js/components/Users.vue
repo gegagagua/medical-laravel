@@ -119,7 +119,7 @@
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                  {{ formatDate(user.createdAt) }}
+                  {{ formatDate(user.created_at) }}
                 </td>
               </tr>
             </tbody>
@@ -291,9 +291,9 @@ export default {
       
       const query = this.searchQuery.toLowerCase();
       return this.users.filter(user =>
-        user.firstName.toLowerCase().includes(query) ||
-        user.lastName.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
+        user.first_name?.toLowerCase().includes(query) ||
+        user.last_name?.toLowerCase().includes(query) ||
+        user.email?.toLowerCase().includes(query) ||
         user.phone?.toLowerCase().includes(query)
       );
     },
@@ -326,53 +326,8 @@ export default {
         this.users = response.data;
       } catch (error) {
         console.error('Failed to fetch users:', error);
-        // Fallback to mock data if API fails
-        this.users = [
-          {
-            id: 1,
-            email: 'giorgi@example.com',
-            firstName: 'გიორგი',
-            lastName: 'მამულაშვილი',
-            phone: '+995 555 123 456',
-            role: 'PATIENT',
-            createdAt: '2025-01-15T10:30:00',
-          },
-          {
-            id: 2,
-            email: 'nino@example.com',
-            firstName: 'ნინო',
-            lastName: 'ბერიძე',
-            phone: '+995 555 234 567',
-            role: 'DOCTOR',
-            createdAt: '2025-01-14T15:20:00',
-          },
-          {
-            id: 3,
-            email: 'davit@example.com',
-            firstName: 'დავით',
-            lastName: 'გელაშვილი',
-            phone: '+995 555 345 678',
-            role: 'PATIENT',
-            createdAt: '2025-01-13T09:15:00',
-          },
-          {
-            id: 4,
-            email: 'mariam@example.com',
-            firstName: 'მარიამ',
-            lastName: 'ქავთარაძე',
-            phone: '+995 555 456 789',
-            role: 'ADMIN',
-            createdAt: '2025-01-12T14:45:00',
-          },
-          {
-            id: 5,
-            email: 'luka@example.com',
-            firstName: 'ლუკა',
-            lastName: 'ლობჟანიძე',
-            role: 'PATIENT',
-            createdAt: '2025-01-11T11:30:00',
-          },
-        ];
+        this.error = error.response?.data?.message || 'მომხმარებლების ჩატვირთვა ვერ მოხერხდა';
+        this.users = [];
       } finally {
         this.loading = false;
       }
