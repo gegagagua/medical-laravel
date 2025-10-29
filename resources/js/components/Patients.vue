@@ -83,6 +83,7 @@
           search-placeholder="მოძებნეთ პაციენტი (სახელი, პ/ნ, ტელეფონი)..."
           empty-message="პაციენტები არ მოიძებნა"
           :loading="loading"
+          :on-row-click="handleRowClick"
         />
       </div>
 
@@ -285,6 +286,7 @@ export default {
         },
         visitFormData: {
           patient_id: '',
+          patient_name: '',
           date: '',
           department: '',
           doctor: '',
@@ -487,12 +489,19 @@ export default {
       this.error = '';
       this.visitFormData = {
         patient_id: '',
+        patient_name: '',
         date: '',
         department: '',
         doctor: '',
         time: '',
         notes: ''
       };
+    },
+    handleRowClick(patient) {
+      // Navigate to patient details page
+      if (patient && patient.id) {
+        this.$router.push(`/patients/${patient.id}`);
+      }
     },
     async createVisit(patientId) {
       const patient = this.patients.find(p => p.id === patientId);
@@ -514,28 +523,27 @@ export default {
         }
 
         const token = localStorage.getItem('auth_token');
-        const patient = this.patients.find(p => p.id === this.visitFormData.patient_id);
         
-        const appointmentData = {
-          patient_id: this.visitFormData.patient_id,
-          patient_name: patient ? patient.fullName : '',
+        const visitData = {
+          user_id: this.visitFormData.patient_id,
           doctor_name: this.visitFormData.doctor,
           department: this.visitFormData.department,
           date: this.visitFormData.date,
           time: this.visitFormData.time,
-          status: 'pending',
+          status: 'PENDING',
           notes: this.visitFormData.notes || ''
         };
 
-        await axios.post('/api/appointments', appointmentData, {
+        await axios.post('/api/visits', visitData, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
         this.closeVisitModal();
-        this.$router.push('/visits');
+        // Show success message
+        alert('ვიზიტი წარმატებით შეიქმნა');
       } catch (error) {
         console.error('Failed to create visit:', error);
-        this.error = error.response?.data?.message || 'შეცდომა მოხდა ვიზიტის შექმნისას';
+        this.error = error.response?.data?.message || error.response?.data?.error || 'შეცდომა მოხდა ვიზიტის შექმნისას';
       } finally {
         this.loading = false;
       }

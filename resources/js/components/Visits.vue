@@ -84,8 +84,74 @@
           </Button>
         </div>
 
+        <!-- Filters -->
+        <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              პაციენტი
+            </label>
+            <select
+              v-model="filters.patientId"
+              @change="applyFilters"
+              class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">ყველა პაციენტი</option>
+              <option v-for="patient in patients" :key="patient.id" :value="patient.id">
+                {{ patient.first_name }} {{ patient.last_name }}
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              სტატუსი
+            </label>
+            <select
+              v-model="filters.status"
+              @change="applyFilters"
+              class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">ყველა სტატუსი</option>
+              <option value="PENDING">მოლოდინში</option>
+              <option value="CONFIRMED">დადასტურებული</option>
+              <option value="CANCELLED">გაუქმებული</option>
+              <option value="COMPLETED">დასრულებული</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              თარიღიდან
+            </label>
+            <input
+              v-model="filters.dateFrom"
+              type="date"
+              @change="applyFilters"
+              class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              თარიღამდე
+            </label>
+            <input
+              v-model="filters.dateTo"
+              type="date"
+              @change="applyFilters"
+              class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        <div class="mb-4 flex justify-end">
+          <Button variant="secondary" @click="clearFilters">
+            ფილტრების გასუფთავება
+          </Button>
+        </div>
+
         <Table
-          :data="appointments"
+          :data="filteredAppointments"
           :columns="columns"
           :page-size="10"
           :searchable="true"
@@ -99,6 +165,7 @@
 </template>
 
 <script>
+import axios from 'axios';
 import Navbar from './Navbar.vue';
 import Table from './ui/Table.vue';
 import Button from './ui/Button.vue';
@@ -113,7 +180,15 @@ export default {
   data() {
     return {
       appointments: [],
+      allAppointments: [],
+      patients: [],
       loading: true,
+      filters: {
+        patientId: '',
+        status: '',
+        dateFrom: '',
+        dateTo: ''
+      },
       columns: [
         {
           key: 'id',
@@ -134,7 +209,15 @@ export default {
           label: 'ექიმი',
           sortable: true,
           filterable: true,
-          render: (value) => `<span class="text-sm text-gray-600 dark:text-gray-400">${value}</span>`
+          render: (value) => `<span class="text-sm text-gray-600 dark:text-gray-400">${value || '-'}</span>`
+        },
+        {
+          key: 'department',
+          label: 'განყოფილება',
+          sortable: true,
+          filterable: true,
+          width: '150px',
+          render: (value) => `<span class="text-sm text-gray-600 dark:text-gray-400">${value || '-'}</span>`
         },
         {
           key: 'date',
@@ -161,12 +244,17 @@ export default {
           width: '140px',
           render: (value) => {
             const statuses = {
+              PENDING: { label: 'მოლოდინში', class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
+              CONFIRMED: { label: 'დადასტურებული', class: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+              CANCELLED: { label: 'გაუქმებული', class: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
+              COMPLETED: { label: 'დასრულებული', class: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+              // Handle lowercase for backward compatibility
               pending: { label: 'მოლოდინში', class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
               confirmed: { label: 'დადასტურებული', class: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
               cancelled: { label: 'გაუქმებული', class: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
               completed: { label: 'დასრულებული', class: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' }
             };
-            const status = statuses[value];
+            const status = statuses[value] || { label: value, class: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' };
             return `<span class="px-3 py-1 rounded-full text-xs font-medium ${status.class}">${status.label}</span>`;
           }
         },
@@ -180,119 +268,128 @@ export default {
     };
   },
   computed: {
+    filteredAppointments() {
+      let filtered = [...this.allAppointments];
+
+      // Filter by patient
+      if (this.filters.patientId) {
+        filtered = filtered.filter(a => {
+          // Try to match by user_id if available, otherwise by patient name
+          if (a.user_id) {
+            return a.user_id == this.filters.patientId;
+          }
+          const patient = this.patients.find(p => p.id == this.filters.patientId);
+          if (patient) {
+            const patientName = `${patient.first_name} ${patient.last_name}`;
+            return a.patientName === patientName;
+          }
+          return false;
+        });
+      }
+
+      // Filter by status
+      if (this.filters.status) {
+        filtered = filtered.filter(a => {
+          const status = a.status?.toUpperCase();
+          return status === this.filters.status.toUpperCase();
+        });
+      }
+
+      // Filter by date range
+      if (this.filters.dateFrom) {
+        filtered = filtered.filter(a => {
+          const visitDate = new Date(a.date).toISOString().split('T')[0];
+          return visitDate >= this.filters.dateFrom;
+        });
+      }
+
+      if (this.filters.dateTo) {
+        filtered = filtered.filter(a => {
+          const visitDate = new Date(a.date).toISOString().split('T')[0];
+          return visitDate <= this.filters.dateTo;
+        });
+      }
+
+      return filtered;
+    },
     totalAppointments() {
-      return this.appointments.length;
+      return this.filteredAppointments.length;
     },
     confirmedCount() {
-      return this.appointments.filter(a => a.status === 'confirmed').length;
+      return this.filteredAppointments.filter(a => {
+        const status = a.status?.toUpperCase();
+        return status === 'CONFIRMED' || status === 'confirmed';
+      }).length;
     },
     pendingCount() {
-      return this.appointments.filter(a => a.status === 'pending').length;
+      return this.filteredAppointments.filter(a => {
+        const status = a.status?.toUpperCase();
+        return status === 'PENDING' || status === 'pending';
+      }).length;
     },
     todayAppointments() {
       const today = new Date().toISOString().split('T')[0];
-      return this.appointments.filter(a => a.date === today).length;
+      return this.filteredAppointments.filter(a => {
+        const visitDate = new Date(a.date).toISOString().split('T')[0];
+        return visitDate === today;
+      }).length;
     }
   },
   mounted() {
     this.fetchAppointments();
+    this.fetchPatients();
   },
   methods: {
+    async fetchPatients() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get('/api/users', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        // Filter only patients
+        this.patients = response.data.filter(user => user.role === 'PATIENT');
+      } catch (error) {
+        console.error('Failed to fetch patients:', error);
+      }
+    },
     async fetchAppointments() {
       this.loading = true;
       try {
         const token = localStorage.getItem('auth_token');
-        const response = await axios.get('/api/appointments', {
+        const response = await axios.get('/api/visits', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        this.appointments = response.data;
+        
+        // Transform the data to include user_id if needed
+        this.allAppointments = response.data.map(visit => ({
+          ...visit,
+          user_id: visit.user_id || null
+        }));
+        
+        this.appointments = this.allAppointments;
       } catch (error) {
-        // Mock data
-        this.appointments = [
-          {
-            id: 1,
-            patientName: 'გიორგი მამულაშვილი',
-            patientId: 1,
-            doctorName: 'დრ. ნინო ბერიძე',
-            date: '2025-01-20',
-            time: '10:00',
-            status: 'confirmed',
-            notes: 'რუტინული შემოწმება',
-            createdAt: '2025-01-15T10:30:00'
-          },
-          {
-            id: 2,
-            patientName: 'ნინო ბერიძე',
-            patientId: 2,
-            doctorName: 'დრ. დავით გელაშვილი',
-            date: '2025-01-21',
-            time: '14:30',
-            status: 'pending',
-            notes: 'გულის შემოწმება',
-            createdAt: '2025-01-14T15:20:00'
-          },
-          {
-            id: 3,
-            patientName: 'დავით გელაშვილი',
-            patientId: 3,
-            doctorName: 'დრ. მარიამ ქავთარაძე',
-            date: '2025-01-19',
-            time: '09:00',
-            status: 'confirmed',
-            notes: 'დიაბეტის კონტროლი',
-            createdAt: '2025-01-13T09:15:00'
-          },
-          {
-            id: 4,
-            patientName: 'მარიამ ქავთარაძე',
-            patientId: 4,
-            doctorName: 'დრ. ლუკა ლობჟანიძე',
-            date: '2025-01-18',
-            time: '16:00',
-            status: 'completed',
-            notes: 'არტრიტის მკურნალობა',
-            createdAt: '2025-01-12T14:45:00'
-          },
-          {
-            id: 5,
-            patientName: 'ლუკა ლობჟანიძე',
-            patientId: 5,
-            doctorName: 'დრ. თამარ შენგელია',
-            date: '2025-01-22',
-            time: '11:30',
-            status: 'pending',
-            notes: 'სპორტული ტრავმა',
-            createdAt: '2025-01-11T11:30:00'
-          },
-          {
-            id: 6,
-            patientName: 'თამარ შენგელია',
-            patientId: 6,
-            doctorName: 'დრ. ნინო ბერიძე',
-            date: '2025-01-17',
-            time: '15:00',
-            status: 'cancelled',
-            notes: 'ანემიის კონსულტაცია',
-            createdAt: '2025-01-10T16:00:00'
-          },
-          {
-            id: 7,
-            patientName: 'გიორგი მამულაშვილი',
-            patientId: 1,
-            doctorName: 'დრ. დავით გელაშვილი',
-            date: '2025-01-23',
-            time: '12:00',
-            status: 'confirmed',
-            notes: 'კონტროლი',
-            createdAt: '2025-01-09T10:00:00'
-          }
-        ];
+        console.error('Failed to fetch visits:', error);
+        this.error = error.response?.data?.message || 'ვიზიტების ჩატვირთვა ვერ მოხერხდა';
+        this.allAppointments = [];
+        this.appointments = [];
       } finally {
         this.loading = false;
       }
     },
+    applyFilters() {
+      // Filters are applied automatically via computed property
+      // This method can be used for additional logic if needed
+    },
+    clearFilters() {
+      this.filters = {
+        patientId: '',
+        status: '',
+        dateFrom: '',
+        dateTo: ''
+      };
+    },
     createNewVisit() {
-      alert('ახალი ვიზიტის დამატება - დაბრუნდით პაციენტების გვერდზე და აირჩიეთ პაციენტი');
+      this.$router.push('/patients');
     }
   }
 };

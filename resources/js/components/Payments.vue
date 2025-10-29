@@ -77,7 +77,64 @@
               ყველა გადახდის სრული ჩანაწერი
             </p>
           </div>
-          <Button variant="primary" @click="openModal" class="hidden md:flex">
+          <div class="flex gap-2">
+            <Button variant="secondary" @click="exportToExcel" class="hidden md:flex">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Excel-ში ექსპორტი
+            </Button>
+            <Button variant="primary" @click="openModal" class="hidden md:flex">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              ახალი გადახდა
+            </Button>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              თარიღიდან
+            </label>
+            <input
+              v-model="filters.dateFrom"
+              type="date"
+              @change="applyFilters"
+              class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              თარიღამდე
+            </label>
+            <input
+              v-model="filters.dateTo"
+              type="date"
+              @change="applyFilters"
+              class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div class="flex items-end">
+            <Button variant="secondary" @click="clearFilters" class="w-full">
+              ფილტრების გასუფთავება
+            </Button>
+          </div>
+        </div>
+
+        <!-- Mobile Add Button -->
+        <div class="md:hidden mb-4 space-y-2">
+          <Button variant="secondary" @click="exportToExcel" class="w-full">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Excel-ში ექსპორტი
+          </Button>
+          <Button variant="primary" @click="openModal" class="w-full">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
@@ -85,16 +142,8 @@
           </Button>
         </div>
 
-        <!-- Mobile Add Button -->
-        <Button variant="primary" @click="openModal" class="md:hidden w-full mb-4">
-          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          ახალი გადახდა
-        </Button>
-
         <Table
-          :data="payments"
+          :data="filteredPayments"
           :columns="columns"
           :page-size="10"
           :searchable="true"
@@ -221,11 +270,16 @@ export default {
   data() {
     return {
       payments: [],
+      allPayments: [],
       patients: [],
       loading: true,
       isModalOpen: false,
       submitting: false,
       error: '',
+      filters: {
+        dateFrom: '',
+        dateTo: ''
+      },
       formData: {
         user_id: '',
         service: '',
@@ -311,17 +365,37 @@ export default {
     };
   },
   computed: {
+    filteredPayments() {
+      let filtered = [...this.allPayments];
+
+      // Filter by date range
+      if (this.filters.dateFrom) {
+        filtered = filtered.filter(p => {
+          const paymentDate = new Date(p.date).toISOString().split('T')[0];
+          return paymentDate >= this.filters.dateFrom;
+        });
+      }
+
+      if (this.filters.dateTo) {
+        filtered = filtered.filter(p => {
+          const paymentDate = new Date(p.date).toISOString().split('T')[0];
+          return paymentDate <= this.filters.dateTo;
+        });
+      }
+
+      return filtered;
+    },
     totalRevenue() {
-      return this.payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + Number(p.amount), 0);
+      return this.filteredPayments.filter(p => p.status === 'paid').reduce((sum, p) => sum + Number(p.amount), 0);
     },
     pendingAmount() {
-      return this.payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + Number(p.amount), 0);
+      return this.filteredPayments.filter(p => p.status === 'pending').reduce((sum, p) => sum + Number(p.amount), 0);
     },
     paidCount() {
-      return this.payments.filter(p => p.status === 'paid').length;
+      return this.filteredPayments.filter(p => p.status === 'paid').length;
     },
     pendingCount() {
-      return this.payments.filter(p => p.status === 'pending').length;
+      return this.filteredPayments.filter(p => p.status === 'pending').length;
     }
   },
   mounted() {
@@ -351,14 +425,105 @@ export default {
         const response = await axios.get('/api/payments', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        this.payments = response.data;
+        this.allPayments = response.data;
+        this.payments = this.allPayments;
       } catch (error) {
         console.error('Failed to fetch payments:', error);
         this.error = error.response?.data?.message || 'გადახდების ჩატვირთვა ვერ მოხერხდა';
+        this.allPayments = [];
         this.payments = [];
       } finally {
         this.loading = false;
       }
+    },
+    applyFilters() {
+      // Filters are applied automatically via computed property
+    },
+    clearFilters() {
+      this.filters = {
+        dateFrom: '',
+        dateTo: ''
+      };
+    },
+    exportToExcel() {
+      // Export filtered payments to Excel
+      const dataToExport = this.filteredPayments.map(payment => {
+        const date = new Date(payment.date);
+        return {
+          'ინვოისი': payment.invoiceNumber,
+          'პაციენტი': payment.patientName,
+          'სერვისი': payment.service,
+          'თანხა': Number(payment.amount).toFixed(2),
+          'გადახდის მეთოდი': this.getPaymentMethodLabel(payment.paymentMethod),
+          'სტატუსი': this.getStatusLabel(payment.status),
+          'თარიღი': date.toLocaleDateString('ka-GE', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+          'დრო': date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })
+        };
+      });
+
+      // Create CSV content
+      if (dataToExport.length === 0) {
+        alert('ექსპორტირებისთვის მონაცემები არ არის');
+        return;
+      }
+
+      // Get headers
+      const headers = Object.keys(dataToExport[0]);
+      
+      // Create CSV rows
+      const csvRows = [
+        headers.join(','),
+        ...dataToExport.map(row => 
+          headers.map(header => {
+            const value = row[header] || '';
+            // Escape commas and quotes
+            return `"${String(value).replace(/"/g, '""')}"`;
+          }).join(',')
+        )
+      ];
+
+      // Create CSV string
+      const csvContent = csvRows.join('\n');
+      
+      // Add BOM for UTF-8 Excel compatibility
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+      
+      // Create download link
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      
+      // Generate filename with date range
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0];
+      let filename = `payments_${dateStr}.csv`;
+      
+      if (this.filters.dateFrom && this.filters.dateTo) {
+        filename = `payments_${this.filters.dateFrom}_${this.filters.dateTo}.csv`;
+      }
+      
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
+    getPaymentMethodLabel(method) {
+      const methods = {
+        cash: 'ნაღდი',
+        card: 'ბარათი',
+        transfer: 'გადარიცხვა'
+      };
+      return methods[method] || method;
+    },
+    getStatusLabel(status) {
+      const statuses = {
+        paid: 'გადახდილი',
+        pending: 'მოლოდინში',
+        cancelled: 'გაუქმებული'
+      };
+      return statuses[status] || status;
     },
     openModal() {
       this.isModalOpen = true;

@@ -18,8 +18,10 @@ class AppointmentController extends Controller
         $visits = $appointments->map(function ($appointment) {
             return [
                 'id' => $appointment->id,
+                'user_id' => $appointment->user_id,
                 'patientName' => $appointment->user->first_name . ' ' . $appointment->user->last_name,
                 'doctorName' => $appointment->doctor_name,
+                'department' => $appointment->department,
                 'date' => $appointment->date->toISOString(),
                 'time' => $appointment->time,
                 'status' => $appointment->status,
@@ -37,8 +39,10 @@ class AppointmentController extends Controller
 
         return response()->json([
             'id' => $appointment->id,
+            'user_id' => $appointment->user_id,
             'patientName' => $appointment->user->first_name . ' ' . $appointment->user->last_name,
             'doctorName' => $appointment->doctor_name,
+            'department' => $appointment->department,
             'date' => $appointment->date->toISOString(),
             'time' => $appointment->time,
             'status' => $appointment->status,
@@ -51,15 +55,40 @@ class AppointmentController extends Controller
     {
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'doctor_name' => 'nullable|string',
+            'doctor_name' => 'required|string|max:255',
+            'department' => 'required|string|max:255',
             'date' => 'required|date',
             'time' => 'required|string',
+            'status' => 'sometimes|in:PENDING,CONFIRMED,CANCELLED,COMPLETED',
             'notes' => 'nullable|string',
         ]);
 
-        $appointment = Appointment::create($validated);
+        // Combine date and time into datetime
+        $dateTime = $validated['date'] . ' ' . $validated['time'];
+        
+        $appointment = Appointment::create([
+            'user_id' => $validated['user_id'],
+            'doctor_name' => $validated['doctor_name'],
+            'department' => $validated['department'],
+            'date' => $dateTime,
+            'time' => $validated['time'],
+            'status' => $validated['status'] ?? 'PENDING',
+            'notes' => $validated['notes'] ?? null,
+        ]);
 
-        return response()->json($appointment, 201);
+        $appointment->load('user:id,first_name,last_name');
+
+        return response()->json([
+            'id' => $appointment->id,
+            'patientName' => $appointment->user->first_name . ' ' . $appointment->user->last_name,
+            'doctorName' => $appointment->doctor_name,
+            'department' => $appointment->department,
+            'date' => $appointment->date->toISOString(),
+            'time' => $appointment->time,
+            'status' => $appointment->status,
+            'notes' => $appointment->notes,
+            'message' => 'Visit created successfully',
+        ], 201);
     }
 
     public function update(Request $request, $id)

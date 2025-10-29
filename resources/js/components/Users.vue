@@ -218,9 +218,9 @@
               class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               required
             >
-              <option value="PATIENT">პაციენტი</option>
-              <option value="DOCTOR">ექიმი</option>
               <option value="ADMIN">ადმინი</option>
+              <option value="DOCTOR">ექიმი</option>
+              <option value="LABOR">ლაბორანტი</option>
             </select>
           </div>
 
@@ -280,7 +280,7 @@ export default {
         last_name: '',
         email: '',
         phone: '',
-        role: 'PATIENT',
+        role: 'ADMIN',
         password: ''
       }
     };
@@ -333,22 +333,26 @@ export default {
       }
     },
     handleRowClick(user) {
-      console.log('Clicked user:', user);
-      // this.$router.push(`/users/${user.id}`);
+      // Navigate to patient details if role is PATIENT
+      if (user.role === 'PATIENT') {
+        this.$router.push(`/patients/${user.id}`);
+      }
     },
     getRoleLabel(role) {
       const labels = {
-        'PATIENT': 'პაციენტი',
+        'ADMIN': 'ადმინი',
         'DOCTOR': 'ექიმი',
-        'ADMIN': 'ადმინი'
+        'LABOR': 'ლაბორანტი',
+        'PATIENT': 'პაციენტი'
       };
       return labels[role] || role;
     },
     getRoleBadgeClass(role) {
       const classes = {
-        'PATIENT': 'px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+        'ADMIN': 'px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
         'DOCTOR': 'px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-        'ADMIN': 'px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+        'LABOR': 'px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+        'PATIENT': 'px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
       };
       return classes[role] || 'px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     },
@@ -375,7 +379,7 @@ export default {
         last_name: '',
         email: '',
         phone: '',
-        role: 'PATIENT',
+        role: 'ADMIN',
         password: ''
       };
     },

@@ -33,7 +33,7 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             'phone' => 'nullable|string|max:255',
-            'role' => 'required|in:PATIENT,DOCTOR,ADMIN',
+            'role' => 'required|in:PATIENT,DOCTOR,ADMIN,LABOR',
         ]);
 
         $user = User::create([
