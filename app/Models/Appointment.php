@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Appointment extends Model
 {
     protected $fillable = [
-        'user_id',
+        'patient_id',
         'doctor_name',
         'department',
         'date',
@@ -21,8 +21,8 @@ class Appointment extends Model
         'date' => 'datetime',
     ];
 
-    public function user(): BelongsTo
+    public function patient(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Patient::class);
     }
 }

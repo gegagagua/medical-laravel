@@ -268,7 +268,7 @@ export default {
       try {
         const patientId = this.$route.params.id;
         const token = localStorage.getItem('auth_token');
-        const response = await axios.get(`/api/users/${patientId}`, {
+        const response = await axios.get(`/api/patients/${patientId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         this.patient = response.data;
@@ -288,7 +288,7 @@ export default {
         });
         
         // Filter visits for this patient
-        this.visits = response.data.filter(visit => visit.user_id == patientId)
+        this.visits = response.data.filter(visit => visit.patient_id == patientId)
           .sort((a, b) => new Date(b.date) - new Date(a.date));
       } catch (error) {
         console.error('Failed to fetch visits:', error);
@@ -328,7 +328,7 @@ export default {
         const token = localStorage.getItem('auth_token');
         
         const visitData = {
-          user_id: this.$route.params.id,
+          patient_id: this.$route.params.id,
           doctor_name: this.visitFormData.doctor,
           department: this.visitFormData.department,
           date: this.visitFormData.date,

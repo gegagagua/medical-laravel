@@ -274,9 +274,9 @@ export default {
       // Filter by patient
       if (this.filters.patientId) {
         filtered = filtered.filter(a => {
-          // Try to match by user_id if available, otherwise by patient name
-          if (a.user_id) {
-            return a.user_id == this.filters.patientId;
+          // Try to match by patient_id if available, otherwise by patient name
+          if (a.patient_id) {
+            return a.patient_id == this.filters.patientId;
           }
           const patient = this.patients.find(p => p.id == this.filters.patientId);
           if (patient) {
@@ -343,11 +343,10 @@ export default {
     async fetchPatients() {
       try {
         const token = localStorage.getItem('auth_token');
-        const response = await axios.get('/api/users', {
+        const response = await axios.get('/api/patients', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        // Filter only patients
-        this.patients = response.data.filter(user => user.role === 'PATIENT');
+        this.patients = response.data;
       } catch (error) {
         console.error('Failed to fetch patients:', error);
       }
@@ -360,11 +359,8 @@ export default {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
-        // Transform the data to include user_id if needed
-        this.allAppointments = response.data.map(visit => ({
-          ...visit,
-          user_id: visit.user_id || null
-        }));
+        // Keep patient_id for filtering
+        this.allAppointments = response.data;
         
         this.appointments = this.allAppointments;
       } catch (error) {

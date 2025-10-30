@@ -165,7 +165,8 @@
               class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               required
             >
-              <option value="">აირჩიეთ პაციენტი</option>
+              <option value="" v-if="patientsLoading">იტვირთება...</option>
+              <option value="" v-else>აირჩიეთ პაციენტი</option>
               <option v-for="patient in patients" :key="patient.id" :value="patient.id">
                 {{ patient.first_name }} {{ patient.last_name }}
               </option>
@@ -272,6 +273,7 @@ export default {
       payments: [],
       allPayments: [],
       patients: [],
+      patientsLoading: false,
       loading: true,
       isModalOpen: false,
       submitting: false,
@@ -407,6 +409,7 @@ export default {
   },
   methods: {
     async fetchPatients() {
+      this.patientsLoading = true;
       try {
         const token = localStorage.getItem('auth_token');
         const response = await axios.get('/api/patients', {
@@ -415,6 +418,9 @@ export default {
         this.patients = response.data;
       } catch (error) {
         console.error('Failed to fetch patients:', error);
+        this.patients = [];
+      } finally {
+        this.patientsLoading = false;
       }
     },
     async fetchPayments() {
@@ -536,6 +542,9 @@ export default {
         payment_method: 'cash',
         status: 'pending'
       };
+      if (!this.patients || this.patients.length === 0) {
+        this.fetchPatients();
+      }
     },
     closeModal() {
       this.isModalOpen = false;

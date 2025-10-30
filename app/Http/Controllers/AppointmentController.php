@@ -3,14 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
-use App\Models\User;
+use App\Models\Patient;
 use Illuminate\Http\Request;
 
 class AppointmentController extends Controller
 {
     public function index(Request $request)
     {
-        $appointments = Appointment::with('user:id,first_name,last_name')
+        $appointments = Appointment::with('patient:id,first_name,last_name')
             ->orderBy('date', 'desc')
             ->get();
 
@@ -18,8 +18,8 @@ class AppointmentController extends Controller
         $visits = $appointments->map(function ($appointment) {
             return [
                 'id' => $appointment->id,
-                'user_id' => $appointment->user_id,
-                'patientName' => $appointment->user->first_name . ' ' . $appointment->user->last_name,
+                'patient_id' => $appointment->patient_id,
+                'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
                 'doctorName' => $appointment->doctor_name,
                 'department' => $appointment->department,
                 'date' => $appointment->date->toISOString(),
@@ -35,12 +35,12 @@ class AppointmentController extends Controller
 
     public function show($id)
     {
-        $appointment = Appointment::with('user')->findOrFail($id);
+        $appointment = Appointment::with('patient')->findOrFail($id);
 
         return response()->json([
             'id' => $appointment->id,
-            'user_id' => $appointment->user_id,
-            'patientName' => $appointment->user->first_name . ' ' . $appointment->user->last_name,
+            'patient_id' => $appointment->patient_id,
+            'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
             'doctorName' => $appointment->doctor_name,
             'department' => $appointment->department,
             'date' => $appointment->date->toISOString(),
@@ -54,7 +54,7 @@ class AppointmentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
+            'patient_id' => 'required|exists:patients,id',
             'doctor_name' => 'required|string|max:255',
             'department' => 'required|string|max:255',
             'date' => 'required|date',
@@ -67,7 +67,7 @@ class AppointmentController extends Controller
         $dateTime = $validated['date'] . ' ' . $validated['time'];
         
         $appointment = Appointment::create([
-            'user_id' => $validated['user_id'],
+            'patient_id' => $validated['patient_id'],
             'doctor_name' => $validated['doctor_name'],
             'department' => $validated['department'],
             'date' => $dateTime,
@@ -76,11 +76,11 @@ class AppointmentController extends Controller
             'notes' => $validated['notes'] ?? null,
         ]);
 
-        $appointment->load('user:id,first_name,last_name');
+        $appointment->load('patient:id,first_name,last_name');
 
         return response()->json([
             'id' => $appointment->id,
-            'patientName' => $appointment->user->first_name . ' ' . $appointment->user->last_name,
+            'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
             'doctorName' => $appointment->doctor_name,
             'department' => $appointment->department,
             'date' => $appointment->date->toISOString(),

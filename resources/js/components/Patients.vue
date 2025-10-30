@@ -88,7 +88,7 @@
       </div>
 
              <!-- Add Visit Modal -->
-             <Modal :isOpen="isVisitModalOpen" title="ახალი ვიზიტის დამატება" @close="closeVisitModal">
+             <Modal :isOpen="isVisitModalOpen" title="" @close="closeVisitModal">
                <form @submit.prevent="submitVisit" class="space-y-4">
                  <div v-if="visitFormData.patient_name" class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                    <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
@@ -508,7 +508,7 @@ export default {
         const token = localStorage.getItem('auth_token');
         
         const visitData = {
-          user_id: this.visitFormData.patient_id,
+          patient_id: this.visitFormData.patient_id,
           doctor_name: this.visitFormData.doctor,
           department: this.visitFormData.department,
           date: this.visitFormData.date,
