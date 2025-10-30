@@ -161,7 +161,7 @@
               პაციენტი
             </label>
             <select
-              v-model="formData.user_id"
+              v-model="formData.patient_id"
               class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               required
             >
@@ -409,11 +409,10 @@ export default {
     async fetchPatients() {
       try {
         const token = localStorage.getItem('auth_token');
-        const response = await axios.get('/api/users', {
+        const response = await axios.get('/api/patients', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        // Filter only patients
-        this.patients = response.data.filter(user => user.role === 'PATIENT');
+        this.patients = response.data;
       } catch (error) {
         console.error('Failed to fetch patients:', error);
       }
@@ -530,7 +529,7 @@ export default {
       this.error = '';
       const today = new Date().toISOString().split('T')[0];
       this.formData = {
-        user_id: '',
+        patient_id: '',
         service: '',
         amount: '',
         payment_date: today,

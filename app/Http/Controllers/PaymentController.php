@@ -3,14 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
-use App\Models\User;
+use App\Models\Patient;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
     public function index()
     {
-        $payments = Payment::with('user:id,first_name,last_name')
+        $payments = Payment::with('patient:id,first_name,last_name')
             ->orderBy('payment_date', 'desc')
             ->orderBy('created_at', 'desc')
             ->get()
@@ -18,7 +18,7 @@ class PaymentController extends Controller
                 return [
                     'id' => $payment->id,
                     'invoiceNumber' => $payment->invoice_number,
-                    'patientName' => $payment->user->first_name . ' ' . $payment->user->last_name,
+                    'patientName' => $payment->patient->first_name . ' ' . $payment->patient->last_name,
                     'service' => $payment->service,
                     'amount' => $payment->amount,
                     'date' => $payment->payment_date->toISOString(),
@@ -34,7 +34,7 @@ class PaymentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
+            'patient_id' => 'required|exists:patients,id',
             'service' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'payment_date' => 'required|date',
@@ -43,7 +43,7 @@ class PaymentController extends Controller
         ]);
 
         $payment = Payment::create([
-            'user_id' => $validated['user_id'],
+            'patient_id' => $validated['patient_id'],
             'service' => $validated['service'],
             'amount' => $validated['amount'],
             'payment_date' => $validated['payment_date'],
@@ -51,12 +51,12 @@ class PaymentController extends Controller
             'status' => $validated['status'] ?? 'pending',
         ]);
 
-        $payment->load('user:id,first_name,last_name');
+        $payment->load('patient:id,first_name,last_name');
 
         return response()->json([
             'id' => $payment->id,
             'invoiceNumber' => $payment->invoice_number,
-            'patientName' => $payment->user->first_name . ' ' . $payment->user->last_name,
+            'patientName' => $payment->patient->first_name . ' ' . $payment->patient->last_name,
             'service' => $payment->service,
             'amount' => $payment->amount,
             'date' => $payment->payment_date->toISOString(),
