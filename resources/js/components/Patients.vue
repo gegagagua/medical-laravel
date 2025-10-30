@@ -390,33 +390,19 @@ export default {
   },
   methods: {
     async fetchPatients() {
-      this.patients = [
-          { id: 1, fullName: 'გიორგი მამულაშვილი', idNumber: '01001012345', age: 35, gender: 'male', phone: '+995 555 123 456', status: 'active', diagnosis: 'რუტინული შემოწმება', lastVisit: '2025-01-15T10:30:00' },
-          { id: 2, fullName: 'ნინო ბერიძე', idNumber: '01001098765', age: 28, gender: 'female', phone: '+995 555 234 567', status: 'active', diagnosis: 'გულის შემოწმება', lastVisit: '2025-01-14T15:20:00' },
-          { id: 3, fullName: 'დავით გელაშვილი', idNumber: '01001055555', age: 45, gender: 'male', phone: '+995 555 345 678', status: 'active', diagnosis: 'დიაბეტის კონტროლი', lastVisit: '2025-01-10T09:15:00' },
-          { id: 4, fullName: 'მარიამ ქავთარაძე', idNumber: '01001044444', age: 52, gender: 'female', phone: '+995 555 456 789', status: 'inactive', diagnosis: 'არტრიტი', lastVisit: '2024-12-20T14:45:00' },
-          { id: 5, fullName: 'ლუკა ლობჟანიძე', idNumber: '01001033333', age: 22, gender: 'male', phone: '+995 555 567 890', status: 'active', diagnosis: 'სპორტული ტრავმა', lastVisit: '2025-01-12T11:30:00' },
-          { id: 6, fullName: 'თამარ შენგელია', idNumber: '01001022222', age: 38, gender: 'female', phone: '+995 555 678 901', status: 'active', diagnosis: 'ანემია', lastVisit: '2025-01-13T16:00:00' }
-        ];
-      this.loading = false;
-      // try {
-      //   const token = localStorage.getItem('auth_token');
-      //   const response = await axios.get('/api/patients', {
-      //     headers: { 'Authorization': `Bearer ${token}` }
-      //   });
-      //   this.patients = response.data;
-      // } catch (error) {
-      //   this.patients = [
-      //     { id: 1, fullName: 'გიორგი მამულაშვილი', idNumber: '01001012345', age: 35, gender: 'male', phone: '+995 555 123 456', status: 'active', diagnosis: 'რუტინული შემოწმება', lastVisit: '2025-01-15T10:30:00' },
-      //     { id: 2, fullName: 'ნინო ბერიძე', idNumber: '01001098765', age: 28, gender: 'female', phone: '+995 555 234 567', status: 'active', diagnosis: 'გულის შემოწმება', lastVisit: '2025-01-14T15:20:00' },
-      //     { id: 3, fullName: 'დავით გელაშვილი', idNumber: '01001055555', age: 45, gender: 'male', phone: '+995 555 345 678', status: 'active', diagnosis: 'დიაბეტის კონტროლი', lastVisit: '2025-01-10T09:15:00' },
-      //     { id: 4, fullName: 'მარიამ ქავთარაძე', idNumber: '01001044444', age: 52, gender: 'female', phone: '+995 555 456 789', status: 'inactive', diagnosis: 'არტრიტი', lastVisit: '2024-12-20T14:45:00' },
-      //     { id: 5, fullName: 'ლუკა ლობჟანიძე', idNumber: '01001033333', age: 22, gender: 'male', phone: '+995 555 567 890', status: 'active', diagnosis: 'სპორტული ტრავმა', lastVisit: '2025-01-12T11:30:00' },
-      //     { id: 6, fullName: 'თამარ შენგელია', idNumber: '01001022222', age: 38, gender: 'female', phone: '+995 555 678 901', status: 'active', diagnosis: 'ანემია', lastVisit: '2025-01-13T16:00:00' }
-      //   ];
-      // } finally {
-      //   this.loading = false;
-      // }
+      this.loading = true;
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get('/api/patients', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        this.patients = response.data;
+      } catch (error) {
+        console.error('Failed to fetch patients:', error);
+        this.patients = [];
+      } finally {
+        this.loading = false;
+      }
     },
     openModal() {
       this.isModalOpen = true;
@@ -443,17 +429,14 @@ export default {
       try {
         const token = localStorage.getItem('auth_token');
         
-        const submitData = {
-          ...this.formData,
-          fullName: `${this.formData.first_name} ${this.formData.last_name}`,
-          idNumber: this.formData.id_number
-        };
-        
-        await axios.post('/api/patients', submitData, {
+        await axios.post('/api/patients', this.formData, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
         await this.fetchPatients();
+        // reset to top and close modal
+        this.error = '';
+        this.isModalOpen = false;
         this.closeModal();
       } catch (error) {
         this.error = error.response?.data?.message || 'შეცდომა მოხდა პაციენტის დამატებისას';

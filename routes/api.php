@@ -5,6 +5,7 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\PatientController;
 use Illuminate\Support\Facades\Route;
 
 // Authentication
@@ -32,8 +33,9 @@ Route::prefix('medical-records')->middleware('auth:sanctum')->group(function () 
 
 // Patients (პაციენტები)
 Route::prefix('patients')->middleware('auth:sanctum')->group(function () {
-    Route::get('/', [UserController::class, 'index']);
-    Route::get('/{id}', [UserController::class, 'show']);
+    Route::get('/', [PatientController::class, 'index']);
+    Route::get('/{id}', [PatientController::class, 'show']);
+    Route::post('/', [PatientController::class, 'store']);
 });
 
 // Users

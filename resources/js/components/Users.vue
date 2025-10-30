@@ -401,6 +401,9 @@ export default {
 
         // Refresh users list
         await this.fetchUsers();
+        // Reset to first page and clear search after adding
+        this.currentPage = 1;
+        this.searchQuery = '';
         
         // Close modal
         this.closeModal();
