@@ -178,13 +178,20 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               ექიმი / მედპერ. *
             </label>
-            <input
+            <select
               v-model="visitFormData.doctor"
-              type="text"
-              placeholder="მაგ: ლომთაძე, ნინო"
-              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               required
-            />
+            >
+              <option value="">აირჩიეთ ლაბორანტი</option>
+              <option 
+                v-for="user in laborUsers" 
+                :key="user.id" 
+                :value="`${user.first_name} ${user.last_name}`"
+              >
+                {{ user.first_name }} {{ user.last_name }}
+              </option>
+            </select>
           </div>
 
           <Input
@@ -247,6 +254,7 @@ export default {
       isVisitModalOpen: false,
       submitting: false,
       error: '',
+      laborUsers: [],
       visitFormData: {
         date: '',
         department: '',
@@ -259,6 +267,7 @@ export default {
   mounted() {
     this.fetchPatientDetails();
     this.fetchPatientVisits();
+    this.fetchLaborUsers();
   },
   methods: {
     async fetchPatientDetails() {
@@ -292,6 +301,26 @@ export default {
           .sort((a, b) => new Date(b.date) - new Date(a.date));
       } catch (error) {
         console.error('Failed to fetch visits:', error);
+      }
+    },
+    async fetchLaborUsers() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get('/api/users', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        // Filter users with LABOR role
+        this.laborUsers = response.data.filter(user => user.role === 'LABOR')
+          .sort((a, b) => {
+            // Sort by last name, then first name
+            const nameA = `${a.last_name} ${a.first_name}`;
+            const nameB = `${b.last_name} ${b.first_name}`;
+            return nameA.localeCompare(nameB);
+          });
+      } catch (error) {
+        console.error('Failed to fetch labor users:', error);
+        this.laborUsers = [];
       }
     },
     goBack() {

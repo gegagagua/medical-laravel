@@ -168,7 +168,7 @@
               <option value="" v-if="patientsLoading">იტვირთება...</option>
               <option value="" v-else>აირჩიეთ პაციენტი</option>
               <option v-for="patient in patients" :key="patient.id" :value="patient.id">
-                {{ patient.first_name }} {{ patient.last_name }}
+                {{ patient.fullName }} {{ patient.last_name }}
               </option>
             </select>
           </div>

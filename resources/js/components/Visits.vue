@@ -74,6 +74,7 @@
             </p>
           </div>
           <Button 
+            v-if="authStore.userRole !== 'LABOR'"
             variant="primary"
             @click="createNewVisit"
           >
@@ -166,6 +167,7 @@
 
 <script>
 import axios from 'axios';
+import { useAuthStore } from '../stores/auth';
 import Navbar from './Navbar.vue';
 import Table from './ui/Table.vue';
 import Button from './ui/Button.vue';
@@ -176,6 +178,10 @@ export default {
     Navbar,
     Table,
     Button
+  },
+  setup() {
+    const authStore = useAuthStore();
+    return { authStore };
   },
   data() {
     return {
@@ -336,6 +342,8 @@ export default {
     }
   },
   mounted() {
+    // Load user from storage
+    this.authStore.loadFromStorage();
     this.fetchAppointments();
     this.fetchPatients();
   },

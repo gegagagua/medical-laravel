@@ -5,7 +5,7 @@
         <!-- Logo and Nav Items -->
         <div class="flex">
           <!-- Logo -->
-          <router-link to="/dashboard" class="flex items-center gap-3">
+          <router-link :to="authStore.userRole === 'LABOR' ? '/visits' : '/dashboard'" class="flex items-center gap-3">
             <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -140,7 +140,7 @@ export default {
   data() {
     return {
       mobileMenuOpen: false,
-      navItems: [
+      allNavItems: [
         {
           name: 'Dashboard',
           path: '/dashboard',
@@ -169,6 +169,16 @@ export default {
       ]
     };
   },
+  computed: {
+    navItems() {
+      // If user is labor, show only visits page
+      if (this.authStore.userRole === 'LABOR') {
+        return this.allNavItems.filter(item => item.path === '/visits');
+      }
+      // Otherwise show all items
+      return this.allNavItems;
+    }
+  },
   mounted() {
     // Load user from storage
     this.authStore.loadFromStorage();
@@ -187,7 +197,8 @@ export default {
       const labels = {
         'PATIENT': 'პაციენტი',
         'DOCTOR': 'ექიმი',
-        'ADMIN': 'ადმინი'
+        'ADMIN': 'ადმინი',
+        'LABOR': 'ლაბორანტი'
       };
       return labels[role] || role;
     },

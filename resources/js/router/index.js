@@ -82,13 +82,37 @@ router.beforeEach((to, from, next) => {
     authStore.loadFromStorage();
   }
   
+  // Check authentication requirement
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/auth');
-  } else if ((to.path === '/auth' || to.path === '/register') && authStore.isAuthenticated) {
-    next('/dashboard');
-  } else {
-    next();
+    return;
   }
+  
+  // Redirect authenticated users away from auth pages
+  if ((to.path === '/auth' || to.path === '/register') && authStore.isAuthenticated) {
+    // Redirect labor users to visits page, others to dashboard
+    if (authStore.userRole === 'LABOR') {
+      next('/visits');
+    } else {
+      next('/dashboard');
+    }
+    return;
+  }
+  
+  // Restrict labor users to only visits page
+  if (authStore.isAuthenticated && authStore.userRole === 'LABOR') {
+    // Define restricted routes for labor users
+    const restrictedRoutes = ['/dashboard', '/users', '/patients', '/payments'];
+    const isRestrictedRoute = restrictedRoutes.includes(to.path) || to.path.startsWith('/patients/');
+    
+    if (isRestrictedRoute) {
+      // Redirect to visits page
+      next('/visits');
+      return;
+    }
+  }
+  
+  next();
 });
 
 export default router;
