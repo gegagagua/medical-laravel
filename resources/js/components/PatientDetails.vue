@@ -267,16 +267,17 @@
               ექიმი / მედპერ. *
             </label>
             <select
-              v-model="visitFormData.doctor"
+              v-model="visitFormData.doctor_id"
               class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               required
               :disabled="!visitFormData.department"
+              @change="updateDoctorName"
             >
               <option value="">{{ visitFormData.department ? 'აირჩიეთ ექიმი' : 'ჯერ აირჩიეთ განყოფილება' }}</option>
               <option 
                 v-for="user in filteredDoctors" 
                 :key="user.id" 
-                :value="`${user.first_name} ${user.last_name}`"
+                :value="user.id"
               >
                 {{ user.first_name }} {{ user.last_name }}
               </option>
@@ -356,6 +357,7 @@ export default {
         date: '',
         department: '',
         doctor: '',
+        doctor_id: '',
         time: '',
         notes: ''
       },
@@ -384,6 +386,7 @@ export default {
     'visitFormData.department'() {
       // Clear doctor selection when department changes
       this.visitFormData.doctor = '';
+      this.visitFormData.doctor_id = '';
     }
   },
   mounted() {
@@ -479,9 +482,21 @@ export default {
         date: today,
         department: '',
         doctor: '',
+        doctor_id: '',
         time: defaultTime,
         notes: ''
       };
+    },
+    updateDoctorName() {
+      // Update doctor name when doctor_id changes
+      if (this.visitFormData.doctor_id) {
+        const selectedDoctor = this.filteredDoctors.find(d => d.id === Number(this.visitFormData.doctor_id));
+        if (selectedDoctor) {
+          this.visitFormData.doctor = `${selectedDoctor.first_name} ${selectedDoctor.last_name}`;
+        }
+      } else {
+        this.visitFormData.doctor = '';
+      }
     },
     closeVisitModal() {
       this.isVisitModalOpen = false;
@@ -492,14 +507,14 @@ export default {
       this.paymentError = '';
       const today = new Date().toISOString().split('T')[0];
       
-      // Fetch doctors if not already loaded to find doctor_id from doctor name
-      if (this.doctorUsers.length === 0) {
-        await this.fetchDoctors();
-      }
+      // Use visit's doctor_id directly if available, otherwise try to find by name
+      let doctorId = visit?.doctor_id || null;
       
-      // Find doctor_id from visit's doctor name
-      let doctorId = null;
-      if (visit && visit.doctorName) {
+      // If doctor_id is not available, try to find it from doctor name (for backward compatibility)
+      if (!doctorId && visit?.doctorName) {
+        if (this.doctorUsers.length === 0) {
+          await this.fetchDoctors();
+        }
         const doctor = this.doctorUsers.find(d => 
           `${d.first_name} ${d.last_name}`.trim().toLowerCase() === visit.doctorName.trim().toLowerCase()
         );
@@ -584,7 +599,7 @@ export default {
 
       try {
         if (!this.visitFormData.date || !this.visitFormData.department || 
-            !this.visitFormData.doctor || !this.visitFormData.time) {
+            !this.visitFormData.doctor_id || !this.visitFormData.time) {
           this.error = 'გთხოვთ შეავსოთ ყველა აუცილებელი ველი';
           this.submitting = false;
           return;
@@ -594,6 +609,7 @@ export default {
         
         const visitData = {
           patient_id: this.$route.params.id,
+          doctor_id: this.visitFormData.doctor_id,
           doctor_name: this.visitFormData.doctor,
           department: this.visitFormData.department,
           date: this.visitFormData.date,

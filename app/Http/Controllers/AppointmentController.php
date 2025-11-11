@@ -20,6 +20,7 @@ class AppointmentController extends Controller
                 'id' => $appointment->id,
                 'patient_id' => $appointment->patient_id,
                 'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
+                'doctor_id' => $appointment->doctor_id,
                 'doctorName' => $appointment->doctor_name,
                 'department' => $appointment->department,
                 'date' => $appointment->date->toISOString(),
@@ -41,6 +42,7 @@ class AppointmentController extends Controller
             'id' => $appointment->id,
             'patient_id' => $appointment->patient_id,
             'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
+            'doctor_id' => $appointment->doctor_id,
             'doctorName' => $appointment->doctor_name,
             'department' => $appointment->department,
             'date' => $appointment->date->toISOString(),
@@ -55,6 +57,7 @@ class AppointmentController extends Controller
     {
         $validated = $request->validate([
             'patient_id' => 'required|exists:patients,id',
+            'doctor_id' => 'nullable|exists:users,id',
             'doctor_name' => 'required|string|max:255',
             'department' => 'required|string|max:255',
             'date' => 'required|date',
@@ -68,6 +71,7 @@ class AppointmentController extends Controller
         
         $appointment = Appointment::create([
             'patient_id' => $validated['patient_id'],
+            'doctor_id' => $validated['doctor_id'] ?? null,
             'doctor_name' => $validated['doctor_name'],
             'department' => $validated['department'],
             'date' => $dateTime,

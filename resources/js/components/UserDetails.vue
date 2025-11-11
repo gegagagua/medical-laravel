@@ -373,13 +373,10 @@ export default {
     }
   },
   watch: {
-    // Watch for user changes and fetch payments when user is loaded
+    // Watch for user changes
     user: {
       handler(newUser) {
-        if (newUser && newUser.role === 'DOCTOR') {
-          console.log('User changed, fetching payments for doctor:', newUser);
-          this.fetchPayments();
-        }
+        // Payments are now included in the user response, no need to fetch separately
       },
       immediate: false
     }
@@ -387,13 +384,7 @@ export default {
   async mounted() {
     await this.fetchUserDetails();
     await this.fetchUserVisits();
-    // Fetch payments if user is a doctor
-    if (this.user && this.user.role === 'DOCTOR') {
-      console.log('User is a doctor, fetching payments for:', this.user);
-      await this.fetchPayments();
-    } else {
-      console.log('User is not a doctor or user not loaded:', this.user);
-    }
+    // Payments are now included in fetchUserDetails response, no need to fetch separately
   },
   methods: {
     async fetchUserDetails() {
@@ -407,6 +398,11 @@ export default {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         this.user = response.data;
+        
+        // Use payments from the API response if available
+        if (response.data.payments && Array.isArray(response.data.payments)) {
+          this.payments = response.data.payments;
+        }
       } catch (error) {
         console.error('Failed to fetch user:', error);
         this.error = error.response?.data?.message || 'მომხმარებლის ჩატვირთვა ვერ მოხერხდა';
