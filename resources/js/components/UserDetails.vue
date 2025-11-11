@@ -323,28 +323,35 @@ export default {
   },
   computed: {
     totalRevenue() {
+      if (!this.payments || this.payments.length === 0) return 0;
       return this.payments
         .filter(p => p.status === 'paid')
-        .reduce((sum, p) => sum + Number(p.amount), 0);
+        .reduce((sum, p) => sum + Number(p.amount || 0), 0);
     },
     todayRevenue() {
+      if (!this.payments || this.payments.length === 0) return 0;
       const today = new Date().toISOString().split('T')[0];
       return this.payments
         .filter(p => {
+          if (!p.date) return false;
           const paymentDate = new Date(p.date).toISOString().split('T')[0];
           return paymentDate === today && p.status === 'paid';
         })
-        .reduce((sum, p) => sum + Number(p.amount), 0);
+        .reduce((sum, p) => sum + Number(p.amount || 0), 0);
     },
     paidCount() {
+      if (!this.payments || this.payments.length === 0) return 0;
       return this.payments.filter(p => p.status === 'paid').length;
     },
     pendingCount() {
+      if (!this.payments || this.payments.length === 0) return 0;
       return this.payments.filter(p => p.status === 'pending').length;
     },
     dailyPayments() {
+      if (!this.payments || this.payments.length === 0) return [];
       const grouped = {};
       this.payments.forEach(payment => {
+        if (!payment.date) return;
         const date = new Date(payment.date).toISOString().split('T')[0];
         if (!grouped[date]) {
           grouped[date] = {
@@ -361,7 +368,7 @@ export default {
           ...day,
           total: day.payments
             .filter(p => p.status === 'paid')
-            .reduce((sum, p) => sum + Number(p.amount), 0)
+            .reduce((sum, p) => sum + Number(p.amount || 0), 0)
         }));
     }
   },
@@ -445,31 +452,39 @@ export default {
       this.paymentsLoading = true;
       try {
         const token = localStorage.getItem('auth_token');
-        const doctorName = `${this.user.first_name} ${this.user.last_name}`.trim();
+        const userId = this.user.id;
         
-        console.log('Fetching payments for doctor:', doctorName);
+        console.log('Fetching payments for user ID:', userId);
         
-        // Fetch all payments and filter by doctor name
+        // Fetch all payments and filter by user_id (more reliable than doctor name)
         const response = await axios.get('/api/payments', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
-        console.log('All payments:', response.data);
-        console.log('Looking for doctor name:', doctorName);
+        console.log('All payments from API:', response.data);
+        console.log('Looking for user_id:', userId);
         
-        // Filter payments where this user is the doctor (case-insensitive comparison)
-        this.payments = response.data
+        // Filter payments where this user created the payment (by user_id)
+        const allPayments = response.data || [];
+        console.log('Total payments received:', allPayments.length);
+        
+        this.payments = allPayments
           .filter(payment => {
-            if (!payment.doctor) return false;
-            const paymentDoctor = payment.doctor.trim();
-            const matches = paymentDoctor.toLowerCase() === doctorName.toLowerCase();
+            // Check both user_id and doctor name for backward compatibility
+            const matchesUserId = payment.userId && Number(payment.userId) === Number(userId);
+            const matchesDoctorName = payment.doctor && 
+              payment.doctor.trim().toLowerCase() === `${this.user.first_name} ${this.user.last_name}`.trim().toLowerCase();
+            
+            const matches = matchesUserId || matchesDoctorName;
+            
             if (matches) {
-              console.log('Found matching payment:', payment);
+              console.log('✓ Found matching payment:', payment);
             }
             return matches;
           })
           .sort((a, b) => new Date(b.date) - new Date(a.date));
         
+        console.log('Filtered payments count:', this.payments.length);
         console.log('Filtered payments:', this.payments);
       } catch (error) {
         console.error('Failed to fetch payments:', error);

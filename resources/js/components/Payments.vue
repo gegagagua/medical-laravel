@@ -173,6 +173,22 @@
             </select>
           </div>
 
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              ექიმი *
+            </label>
+            <select
+              v-model="formData.doctor_id"
+              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              required
+            >
+              <option value="">აირჩიეთ ექიმი</option>
+              <option v-for="user in doctorUsers" :key="user.id" :value="user.id">
+                {{ user.first_name }} {{ user.last_name }} {{ user.doctor_role ? `(${user.doctor_role})` : '' }}
+              </option>
+            </select>
+          </div>
+
           <Input
             v-model="formData.service"
             label="სერვისი"
@@ -279,6 +295,7 @@ export default {
       allPayments: [],
       patients: [],
       patientsLoading: false,
+      doctorUsers: [],
       loading: true,
       isModalOpen: false,
       submitting: false,
@@ -288,7 +305,8 @@ export default {
         dateTo: ''
       },
       formData: {
-        user_id: '',
+        patient_id: '',
+        doctor_id: '',
         service: '',
         amount: '',
         payment_date: '',
@@ -416,6 +434,7 @@ export default {
   mounted() {
     this.fetchPayments();
     this.fetchPatients();
+    this.fetchDoctors();
     // Set default date to today
     const today = new Date().toISOString().split('T')[0];
     this.formData.payment_date = today;
@@ -434,6 +453,25 @@ export default {
         this.patients = [];
       } finally {
         this.patientsLoading = false;
+      }
+    },
+    async fetchDoctors() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get('/api/users', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        // Filter users with DOCTOR role
+        this.doctorUsers = response.data.filter(user => user.role === 'DOCTOR')
+          .sort((a, b) => {
+            const nameA = `${a.last_name} ${a.first_name}`;
+            const nameB = `${b.last_name} ${b.first_name}`;
+            return nameA.localeCompare(nameB);
+          });
+      } catch (error) {
+        console.error('Failed to fetch doctors:', error);
+        this.doctorUsers = [];
       }
     },
     async fetchPayments() {
@@ -550,6 +588,7 @@ export default {
       const today = new Date().toISOString().split('T')[0];
       this.formData = {
         patient_id: '',
+        doctor_id: '',
         service: '',
         amount: '',
         payment_date: today,
@@ -558,6 +597,9 @@ export default {
       };
       if (!this.patients || this.patients.length === 0) {
         this.fetchPatients();
+      }
+      if (!this.doctorUsers || this.doctorUsers.length === 0) {
+        this.fetchDoctors();
       }
     },
     closeModal() {
@@ -569,8 +611,18 @@ export default {
       this.error = '';
 
       try {
+        // Get doctor name from selected doctor_id
+        const selectedDoctor = this.doctorUsers.find(d => d.id === Number(this.formData.doctor_id));
+        const doctorName = selectedDoctor ? `${selectedDoctor.first_name} ${selectedDoctor.last_name}` : null;
+        
+        const paymentData = {
+          ...this.formData,
+          user_id: this.formData.doctor_id || null,
+          doctor: doctorName
+        };
+        
         const token = localStorage.getItem('auth_token');
-        await axios.post('/api/payments', this.formData, {
+        await axios.post('/api/payments', paymentData, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 

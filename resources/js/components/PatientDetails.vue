@@ -361,11 +361,13 @@ export default {
       },
       paymentFormData: {
         service: '',
+        doctor_id: '',
         doctor: '',
         amount: '',
         payment_date: '',
         payment_method: ''
-      }
+      },
+      doctorUsers: []
     };
   },
   computed: {
@@ -388,6 +390,7 @@ export default {
     this.fetchPatientDetails();
     this.fetchPatientVisits();
     this.fetchLaborUsers();
+    this.fetchDoctors();
   },
   methods: {
     async fetchPatientDetails() {
@@ -443,6 +446,26 @@ export default {
         this.laborUsers = [];
       }
     },
+    async fetchDoctors() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get('/api/users', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        // Filter users with DOCTOR role
+        this.doctorUsers = response.data.filter(user => user.role === 'DOCTOR')
+          .sort((a, b) => {
+            // Sort by last name, then first name
+            const nameA = `${a.last_name} ${a.first_name}`;
+            const nameB = `${b.last_name} ${b.first_name}`;
+            return nameA.localeCompare(nameB);
+          });
+      } catch (error) {
+        console.error('Failed to fetch doctors:', error);
+        this.doctorUsers = [];
+      }
+    },
     goBack() {
       this.$router.push('/patients');
     },
@@ -464,13 +487,31 @@ export default {
       this.isVisitModalOpen = false;
       this.error = '';
     },
-    openPaymentModal(visit) {
+    async openPaymentModal(visit) {
       this.isPaymentModalOpen = true;
       this.paymentError = '';
       const today = new Date().toISOString().split('T')[0];
+      
+      // Fetch doctors if not already loaded to find doctor_id from doctor name
+      if (this.doctorUsers.length === 0) {
+        await this.fetchDoctors();
+      }
+      
+      // Find doctor_id from visit's doctor name
+      let doctorId = null;
+      if (visit && visit.doctorName) {
+        const doctor = this.doctorUsers.find(d => 
+          `${d.first_name} ${d.last_name}`.trim().toLowerCase() === visit.doctorName.trim().toLowerCase()
+        );
+        if (doctor) {
+          doctorId = doctor.id;
+        }
+      }
+      
       this.paymentFormData = {
         service: '',
-        doctor: visit.doctorName || '',
+        doctor_id: doctorId,
+        doctor: visit?.doctorName || '',
         amount: '',
         payment_date: today,
         payment_method: ''
@@ -491,13 +532,31 @@ export default {
           this.submittingPayment = false;
           return;
         }
+        
+        // If doctor_id is not set, try to find it from doctor name
+        if (!this.paymentFormData.doctor_id && this.paymentFormData.doctor) {
+          if (this.doctorUsers.length === 0) {
+            await this.fetchDoctors();
+          }
+          const doctor = this.doctorUsers.find(d => 
+            `${d.first_name} ${d.last_name}`.trim().toLowerCase() === this.paymentFormData.doctor.trim().toLowerCase()
+          );
+          if (doctor) {
+            this.paymentFormData.doctor_id = doctor.id;
+          }
+        }
 
         const token = localStorage.getItem('auth_token');
         
+        // Get doctor name from selected doctor_id
+        const selectedDoctor = this.doctorUsers.find(d => d.id === Number(this.paymentFormData.doctor_id));
+        const doctorName = selectedDoctor ? `${selectedDoctor.first_name} ${selectedDoctor.last_name}` : this.paymentFormData.doctor;
+        
         const paymentData = {
           patient_id: this.$route.params.id,
+          user_id: this.paymentFormData.doctor_id || null,
           service: this.paymentFormData.service,
-          doctor: this.paymentFormData.doctor || null,
+          doctor: doctorName || null,
           amount: parseFloat(this.paymentFormData.amount),
           payment_date: this.paymentFormData.payment_date,
           payment_method: this.paymentFormData.payment_method,

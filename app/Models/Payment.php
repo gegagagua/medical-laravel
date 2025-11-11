@@ -4,11 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\User;
 
 class Payment extends Model
 {
     protected $fillable = [
         'patient_id',
+        'user_id',
         'service',
         'doctor',
         'amount',
@@ -28,6 +30,11 @@ class Payment extends Model
     public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     protected static function boot()
