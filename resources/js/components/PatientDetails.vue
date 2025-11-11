@@ -165,13 +165,22 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               განყოფილება *
             </label>
-            <input
+            <select
               v-model="visitFormData.department"
-              type="text"
-              placeholder="მაგ: ენდოკრინოლოგია"
-              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               required
-            />
+            >
+              <option value="">აირჩიეთ პროფესია</option>
+              <option value="ენდოკრინოლოგია">ენდოკრინოლოგია</option>
+              <option value="ბავშვთა და მოზრდილთა ენდოკრინოლოგია">ბავშვთა და მოზრდილთა ენდოკრინოლოგია</option>
+              <option value="ექიმი">ექიმი</option>
+              <option value="რადიოლოგია">რადიოლოგია</option>
+              <option value="ოფთალმოლოგია">ოფთალმოლოგია</option>
+              <option value="ნევროლოგია">ნევროლოგია</option>
+              <option value="კარდიოლოგია">კარდიოლოგია</option>
+              <option value="ტრავმატოლოგია">ტრავმატოლოგია</option>
+              <option value="ოტორინოლარინგოლოგია">ოტორინოლარინგოლოგია</option>
+            </select>
           </div>
 
           <div>
@@ -182,10 +191,11 @@
               v-model="visitFormData.doctor"
               class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               required
+              :disabled="!visitFormData.department"
             >
-              <option value="">აირჩიეთ ლაბორანტი</option>
+              <option value="">{{ visitFormData.department ? 'აირჩიეთ ექიმი' : 'ჯერ აირჩიეთ განყოფილება' }}</option>
               <option 
-                v-for="user in laborUsers" 
+                v-for="user in filteredDoctors" 
                 :key="user.id" 
                 :value="`${user.first_name} ${user.last_name}`"
               >
@@ -264,6 +274,22 @@ export default {
       }
     };
   },
+  computed: {
+    filteredDoctors() {
+      if (!this.visitFormData.department) {
+        return [];
+      }
+      return this.laborUsers.filter(user => 
+        user.doctor_role === this.visitFormData.department
+      );
+    }
+  },
+  watch: {
+    'visitFormData.department'() {
+      // Clear doctor selection when department changes
+      this.visitFormData.doctor = '';
+    }
+  },
   mounted() {
     this.fetchPatientDetails();
     this.fetchPatientVisits();
@@ -330,11 +356,13 @@ export default {
       this.isVisitModalOpen = true;
       this.error = '';
       const today = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const defaultTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       this.visitFormData = {
         date: today,
         department: '',
         doctor: '',
-        time: '',
+        time: defaultTime,
         notes: ''
       };
     },

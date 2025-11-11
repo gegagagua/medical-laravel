@@ -10,7 +10,7 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::select('id', 'first_name', 'last_name', 'email', 'phone', 'role', 'created_at')
+        $users = User::select('id', 'first_name', 'last_name', 'email', 'phone', 'role', 'doctor_role', 'created_at')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -19,7 +19,7 @@ class UserController extends Controller
 
     public function show($id)
     {
-        $user = User::select('id', 'first_name', 'last_name', 'email', 'phone', 'role', 'created_at')
+        $user = User::select('id', 'first_name', 'last_name', 'email', 'phone', 'role', 'doctor_role', 'created_at')
             ->findOrFail($id);
 
         return response()->json($user);
@@ -27,14 +27,23 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $rules = [
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             'phone' => 'nullable|string|max:255',
             'role' => 'required|in:PATIENT,DOCTOR,ADMIN,LABOR',
-        ]);
+        ];
+
+        // Add doctor_role validation if role is LABOR
+        if ($request->role === 'LABOR') {
+            $rules['doctor_role'] = 'required|string|max:255';
+        } else {
+            $rules['doctor_role'] = 'nullable|string|max:255';
+        }
+
+        $request->validate($rules);
 
         $user = User::create([
             'first_name' => $request->first_name,
@@ -43,6 +52,7 @@ class UserController extends Controller
             'password' => Hash::make($request->password),
             'phone' => $request->phone,
             'role' => $request->role,
+            'doctor_role' => $request->doctor_role,
         ]);
 
         return response()->json([

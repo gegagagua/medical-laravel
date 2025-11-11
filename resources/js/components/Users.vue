@@ -85,6 +85,9 @@
                   როლი
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  პროფესია
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   რეგისტრაცია
                 </th>
               </tr>
@@ -117,6 +120,9 @@
                   <span :class="getRoleBadgeClass(user.role)">
                     {{ getRoleLabel(user.role) }}
                   </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  {{ user.doctor_role || '-' }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                   {{ formatDate(user.created_at) }}
@@ -219,8 +225,29 @@
               required
             >
               <option value="ADMIN">ადმინი</option>
-              <option value="DOCTOR">ექიმი</option>
-              <option value="LABOR">ლაბორანტი</option>
+              <option value="LABOR">ლაბორანტი/ექიმი</option>
+            </select>
+          </div>
+
+          <div v-if="formData.role === 'LABOR'">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              ექიმის პროფესია
+            </label>
+            <select
+              v-model="formData.doctor_role"
+              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              required
+            >
+              <option value="">აირჩიეთ პროფესია</option>
+              <option value="ენდოკრინოლოგია">ენდოკრინოლოგია</option>
+              <option value="ბავშვთა და მოზრდილთა ენდოკრინოლოგია">ბავშვთა და მოზრდილთა ენდოკრინოლოგია</option>
+              <option value="ექიმი">ექიმი</option>
+              <option value="რადიოლოგია">რადიოლოგია</option>
+              <option value="ოფთალმოლოგია">ოფთალმოლოგია</option>
+              <option value="ნევროლოგია">ნევროლოგია</option>
+              <option value="კარდიოლოგია">კარდიოლოგია</option>
+              <option value="ტრავმატოლოგია">ტრავმატოლოგია</option>
+              <option value="ოტორინოლარინგოლოგია">ოტორინოლარინგოლოგია</option>
             </select>
           </div>
 
@@ -281,6 +308,7 @@ export default {
         email: '',
         phone: '',
         role: 'ADMIN',
+        doctor_role: '',
         password: ''
       }
     };
@@ -380,6 +408,7 @@ export default {
         email: '',
         phone: '',
         role: 'ADMIN',
+        doctor_role: '',
         password: ''
       };
     },
