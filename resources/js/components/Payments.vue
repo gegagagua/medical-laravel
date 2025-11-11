@@ -313,6 +313,14 @@ export default {
           render: (value) => `<span class="font-medium text-gray-900 dark:text-white">${value}</span>`
         },
         {
+          key: 'doctor',
+          label: 'ექიმი',
+          sortable: true,
+          filterable: true,
+          width: '180px',
+          render: (value) => value ? `<span class="text-sm font-medium text-blue-600 dark:text-blue-400">${value}</span>` : `<span class="text-sm text-gray-400 dark:text-gray-500">-</span>`
+        },
+        {
           key: 'service',
           label: 'სერვისი',
           sortable: true,
@@ -462,6 +470,7 @@ export default {
         return {
           'ინვოისი': payment.invoiceNumber,
           'პაციენტი': payment.patientName,
+          'ექიმი': payment.doctor || '-',
           'სერვისი': payment.service,
           'თანხა': Number(payment.amount).toFixed(2),
           'გადახდის მეთოდი': this.getPaymentMethodLabel(payment.paymentMethod),

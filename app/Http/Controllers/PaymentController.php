@@ -70,4 +70,32 @@ class PaymentController extends Controller
             'message' => 'Payment created successfully',
         ], 201);
     }
+
+    public function byDoctor(Request $request)
+    {
+        $user = $request->user();
+        $doctorName = $user->first_name . ' ' . $user->last_name;
+
+        $payments = Payment::with('patient:id,first_name,last_name')
+            ->where('doctor', $doctorName)
+            ->orderBy('payment_date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($payment) {
+                return [
+                    'id' => $payment->id,
+                    'invoiceNumber' => $payment->invoice_number,
+                    'patientName' => $payment->patient->first_name . ' ' . $payment->patient->last_name,
+                    'service' => $payment->service,
+                    'doctor' => $payment->doctor,
+                    'amount' => $payment->amount,
+                    'date' => $payment->payment_date->toISOString(),
+                    'paymentMethod' => $payment->payment_method,
+                    'status' => $payment->status,
+                    'created_at' => $payment->created_at->toISOString(),
+                ];
+            });
+
+        return response()->json($payments);
+    }
 }

@@ -48,6 +48,7 @@ Route::prefix('users')->middleware('auth:sanctum')->group(function () {
 // Payments
 Route::prefix('payments')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [PaymentController::class, 'index']);
+    Route::get('/by-doctor', [PaymentController::class, 'byDoctor']);
     Route::post('/', [PaymentController::class, 'store']);
 });
 

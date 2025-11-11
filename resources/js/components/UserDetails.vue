@@ -82,6 +82,159 @@
           </div>
         </div>
 
+        <!-- Payments Section (for Doctors) -->
+        <div v-if="user.role !== 'admin'" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 mb-6">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+            გადახდები
+          </h2>
+
+          <!-- Payment Stats -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">მთლიანი შემოსავალი</p>
+              <p class="text-2xl font-bold text-green-600 dark:text-green-400">
+                ₾{{ totalRevenue.toFixed(2) }}
+              </p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">დღევანდელი შემოსავალი</p>
+              <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                ₾{{ todayRevenue.toFixed(2) }}
+              </p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">გადახდილი</p>
+              <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ paidCount }}</p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">მოლოდინში</p>
+              <p class="text-2xl font-bold text-orange-600 dark:text-orange-400">{{ pendingCount }}</p>
+            </div>
+          </div>
+
+          <!-- Tabs for Full List and Daily Breakdown -->
+          <div class="mb-6">
+            <div class="flex border-b border-gray-200 dark:border-gray-700">
+              <button
+                @click="activeTab = 'full'"
+                :class="[
+                  'px-6 py-3 font-medium text-sm transition-colors',
+                  activeTab === 'full'
+                    ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                ]"
+              >
+                სრული სია
+              </button>
+              <button
+                @click="activeTab = 'daily'"
+                :class="[
+                  'px-6 py-3 font-medium text-sm transition-colors',
+                  activeTab === 'daily'
+                    ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                ]"
+              >
+                დღიური ჭრილი
+              </button>
+            </div>
+          </div>
+
+          <!-- Full List Tab -->
+          <div v-if="activeTab === 'full'">
+            <div v-if="paymentsLoading" class="text-center py-8 text-gray-500 dark:text-gray-400">
+              იტვირთება...
+            </div>
+            <div v-else-if="payments.length === 0" class="text-center py-12">
+              <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">გადახდები არ მოიძებნა</h3>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">ამ ექიმს ჯერ არ ჰქონია გადახდები</p>
+            </div>
+            <div v-else class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ინვოისი</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">პაციენტი</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">სერვისი</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">თანხა</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">გადახდის მეთოდი</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">სტატუსი</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">თარიღი</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr v-for="payment in payments" :key="payment.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span class="font-mono font-semibold text-blue-600 dark:text-blue-400">{{ payment.invoiceNumber }}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span class="font-medium text-gray-900 dark:text-white">{{ payment.patientName }}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                      <span class="text-sm text-gray-600 dark:text-gray-400">{{ payment.service }}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span class="font-bold text-green-600 dark:text-green-400">₾{{ Number(payment.amount).toFixed(2) }}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span :class="getPaymentMethodClass(payment.paymentMethod)">
+                        {{ getPaymentMethodLabel(payment.paymentMethod) }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span :class="getPaymentStatusClass(payment.status)">
+                        {{ getPaymentStatusLabel(payment.status) }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span class="text-sm text-gray-600 dark:text-gray-400">{{ formatPaymentDate(payment.date) }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Daily Breakdown Tab -->
+          <div v-if="activeTab === 'daily'">
+            <div v-if="paymentsLoading" class="text-center py-8 text-gray-500 dark:text-gray-400">
+              იტვირთება...
+            </div>
+            <div v-else-if="dailyPayments.length === 0" class="text-center py-12">
+              <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">გადახდები არ მოიძებნა</h3>
+            </div>
+            <div v-else class="space-y-4">
+              <div v-for="day in dailyPayments" :key="day.date" class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ formatPaymentDate(day.date) }}</h3>
+                  <span class="text-xl font-bold text-green-600 dark:text-green-400">₾{{ day.total.toFixed(2) }}</span>
+                </div>
+                <div class="space-y-2">
+                  <div v-for="payment in day.payments" :key="payment.id" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                    <div class="flex-1">
+                      <p class="font-medium text-gray-900 dark:text-white">{{ payment.patientName }}</p>
+                      <p class="text-sm text-gray-600 dark:text-gray-400">{{ payment.service }}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">{{ payment.invoiceNumber }}</p>
+                    </div>
+                    <div class="text-right">
+                      <p class="font-bold text-green-600 dark:text-green-400">₾{{ Number(payment.amount).toFixed(2) }}</p>
+                      <span :class="getPaymentStatusClass(payment.status)" class="text-xs">
+                        {{ getPaymentStatusLabel(payment.status) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Visit History -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
@@ -161,13 +314,79 @@ export default {
     return {
       user: null,
       visits: [],
+      payments: [],
+      paymentsLoading: false,
       loading: true,
-      error: ''
+      error: '',
+      activeTab: 'full'
     };
+  },
+  computed: {
+    totalRevenue() {
+      return this.payments
+        .filter(p => p.status === 'paid')
+        .reduce((sum, p) => sum + Number(p.amount), 0);
+    },
+    todayRevenue() {
+      const today = new Date().toISOString().split('T')[0];
+      return this.payments
+        .filter(p => {
+          const paymentDate = new Date(p.date).toISOString().split('T')[0];
+          return paymentDate === today && p.status === 'paid';
+        })
+        .reduce((sum, p) => sum + Number(p.amount), 0);
+    },
+    paidCount() {
+      return this.payments.filter(p => p.status === 'paid').length;
+    },
+    pendingCount() {
+      return this.payments.filter(p => p.status === 'pending').length;
+    },
+    dailyPayments() {
+      const grouped = {};
+      this.payments.forEach(payment => {
+        const date = new Date(payment.date).toISOString().split('T')[0];
+        if (!grouped[date]) {
+          grouped[date] = {
+            date: date,
+            total: 0,
+            payments: []
+          };
+        }
+        grouped[date].payments.push(payment);
+      });
+      return Object.values(grouped)
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .map(day => ({
+          ...day,
+          total: day.payments
+            .filter(p => p.status === 'paid')
+            .reduce((sum, p) => sum + Number(p.amount), 0)
+        }));
+    }
+  },
+  watch: {
+    // Watch for user changes and fetch payments when user is loaded
+    user: {
+      handler(newUser) {
+        if (newUser && newUser.role === 'DOCTOR') {
+          console.log('User changed, fetching payments for doctor:', newUser);
+          this.fetchPayments();
+        }
+      },
+      immediate: false
+    }
   },
   async mounted() {
     await this.fetchUserDetails();
     await this.fetchUserVisits();
+    // Fetch payments if user is a doctor
+    if (this.user && this.user.role === 'DOCTOR') {
+      console.log('User is a doctor, fetching payments for:', this.user);
+      await this.fetchPayments();
+    } else {
+      console.log('User is not a doctor or user not loaded:', this.user);
+    }
   },
   methods: {
     async fetchUserDetails() {
@@ -212,6 +431,53 @@ export default {
         console.error('Failed to fetch visits:', error);
       }
     },
+    async fetchPayments() {
+      if (!this.user) {
+        // Wait for user to be loaded
+        await this.fetchUserDetails();
+      }
+      
+      if (!this.user || this.user.role !== 'DOCTOR') {
+        this.payments = [];
+        return;
+      }
+      
+      this.paymentsLoading = true;
+      try {
+        const token = localStorage.getItem('auth_token');
+        const doctorName = `${this.user.first_name} ${this.user.last_name}`.trim();
+        
+        console.log('Fetching payments for doctor:', doctorName);
+        
+        // Fetch all payments and filter by doctor name
+        const response = await axios.get('/api/payments', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        console.log('All payments:', response.data);
+        console.log('Looking for doctor name:', doctorName);
+        
+        // Filter payments where this user is the doctor (case-insensitive comparison)
+        this.payments = response.data
+          .filter(payment => {
+            if (!payment.doctor) return false;
+            const paymentDoctor = payment.doctor.trim();
+            const matches = paymentDoctor.toLowerCase() === doctorName.toLowerCase();
+            if (matches) {
+              console.log('Found matching payment:', payment);
+            }
+            return matches;
+          })
+          .sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        console.log('Filtered payments:', this.payments);
+      } catch (error) {
+        console.error('Failed to fetch payments:', error);
+        this.payments = [];
+      } finally {
+        this.paymentsLoading = false;
+      }
+    },
     goBack() {
       this.$router.push('/users');
     },
@@ -228,6 +494,47 @@ export default {
         month: 'long', 
         day: 'numeric' 
       });
+    },
+    formatPaymentDate(dateString) {
+      if (!dateString) return '-';
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ka-GE', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    },
+    getPaymentMethodLabel(method) {
+      const methods = {
+        cash: 'ნაღდი',
+        card: 'ბარათი',
+        transfer: 'გადარიცხვა'
+      };
+      return methods[method] || method;
+    },
+    getPaymentMethodClass(method) {
+      const classes = {
+        cash: 'px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+        card: 'px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+        transfer: 'px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+      };
+      return classes[method] || 'px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    },
+    getPaymentStatusLabel(status) {
+      const statuses = {
+        paid: 'გადახდილი',
+        pending: 'მოლოდინში',
+        cancelled: 'გაუქმებული'
+      };
+      return statuses[status] || status;
+    },
+    getPaymentStatusClass(status) {
+      const classes = {
+        paid: 'px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+        pending: 'px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+        cancelled: 'px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+      };
+      return classes[status] || 'px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     },
     getRoleLabel(role) {
       const labels = {
