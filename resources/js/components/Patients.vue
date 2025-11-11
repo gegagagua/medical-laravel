@@ -252,6 +252,7 @@
 
 <script>
 import axios from 'axios';
+import { useToastStore } from '../stores/toast';
 import Navbar from './Navbar.vue';
 import Table from './ui/Table.vue';
 import Button from './ui/Button.vue';
@@ -266,6 +267,10 @@ export default {
     Button,
     Modal,
     Input
+  },
+  setup() {
+    const toastStore = useToastStore();
+    return { toastStore };
   },
   data() {
       return {
@@ -445,7 +450,7 @@ export default {
       }
     },
     handleImport() {
-      alert('იმპორტის ფუნქცია მალე დაემატება');
+      this.toastStore.info('იმპორტის ფუნქცია მალე დაემატება');
     },
     openVisitModal(patientId) {
       const patient = this.patients.find(p => p.id === patientId);
@@ -523,10 +528,12 @@ export default {
 
         this.closeVisitModal();
         // Show success message
-        alert('ვიზიტი წარმატებით შეიქმნა');
+        this.toastStore.success('ვიზიტი წარმატებით შეიქმნა');
       } catch (error) {
         console.error('Failed to create visit:', error);
-        this.error = error.response?.data?.message || error.response?.data?.error || 'შეცდომა მოხდა ვიზიტის შექმნისას';
+        const errorMessage = error.response?.data?.message || error.response?.data?.error || 'შეცდომა მოხდა ვიზიტის შექმნისას';
+        this.error = errorMessage;
+        this.toastStore.error(errorMessage);
       } finally {
         this.loading = false;
       }

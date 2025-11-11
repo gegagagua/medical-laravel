@@ -364,6 +364,9 @@ export default {
       // Navigate to patient details if role is PATIENT
       if (user.role === 'PATIENT') {
         this.$router.push(`/patients/${user.id}`);
+      } else if (user.role === 'LABOR') {
+        // Navigate to user details for LABOR users
+        this.$router.push(`/users/${user.id}`);
       }
     },
     getRoleLabel(role) {

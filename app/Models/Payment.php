@@ -10,6 +10,7 @@ class Payment extends Model
     protected $fillable = [
         'patient_id',
         'service',
+        'doctor',
         'amount',
         'payment_date',
         'payment_method',

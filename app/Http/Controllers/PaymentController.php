@@ -20,6 +20,7 @@ class PaymentController extends Controller
                     'invoiceNumber' => $payment->invoice_number,
                     'patientName' => $payment->patient->first_name . ' ' . $payment->patient->last_name,
                     'service' => $payment->service,
+                    'doctor' => $payment->doctor,
                     'amount' => $payment->amount,
                     'date' => $payment->payment_date->toISOString(),
                     'paymentMethod' => $payment->payment_method,
@@ -36,6 +37,7 @@ class PaymentController extends Controller
         $validated = $request->validate([
             'patient_id' => 'required|exists:patients,id',
             'service' => 'required|string|max:255',
+            'doctor' => 'nullable|string|max:255',
             'amount' => 'required|numeric|min:0',
             'payment_date' => 'required|date',
             'payment_method' => 'required|in:cash,card,transfer',
@@ -45,6 +47,7 @@ class PaymentController extends Controller
         $payment = Payment::create([
             'patient_id' => $validated['patient_id'],
             'service' => $validated['service'],
+            'doctor' => $validated['doctor'] ?? null,
             'amount' => $validated['amount'],
             'payment_date' => $validated['payment_date'],
             'payment_method' => $validated['payment_method'],
@@ -58,6 +61,7 @@ class PaymentController extends Controller
             'invoiceNumber' => $payment->invoice_number,
             'patientName' => $payment->patient->first_name . ' ' . $payment->patient->last_name,
             'service' => $payment->service,
+            'doctor' => $payment->doctor,
             'amount' => $payment->amount,
             'date' => $payment->payment_date->toISOString(),
             'paymentMethod' => $payment->payment_method,

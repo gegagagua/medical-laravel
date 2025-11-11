@@ -5,6 +5,7 @@ import AuthPage from '../components/AuthPage.vue';
 import RegisterPage from '../components/RegisterPage.vue';
 import Dashboard from '../components/Dashboard.vue';
 import Users from '../components/Users.vue';
+import UserDetails from '../components/UserDetails.vue';
 import Patients from '../components/Patients.vue';
 import PatientDetails from '../components/PatientDetails.vue';
 import Payments from '../components/Payments.vue';
@@ -36,6 +37,12 @@ const routes = [
     path: '/users',
     name: 'Users',
     component: Users,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/users/:id',
+    name: 'UserDetails',
+    component: UserDetails,
     meta: { requiresAuth: true }
   },
   {

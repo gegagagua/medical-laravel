@@ -130,6 +130,14 @@
                     <span class="font-medium">შენიშვნა:</span> {{ visit.notes }}
                   </div>
                 </div>
+                <div class="ml-4">
+                  <Button variant="primary" @click="openPaymentModal(visit)" class="text-sm px-3 py-2">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    გადახდის დამატება
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -144,6 +152,77 @@
         <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">პაციენტი არ მოიძებნა</h3>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ error || 'შეცდომა მოხდა პაციენტის ჩატვირთვისას' }}</p>
       </div>
+
+      <!-- Add Payment Modal -->
+      <Modal :isOpen="isPaymentModalOpen" title="გადახდის დამატება" @close="closePaymentModal">
+        <form @submit.prevent="submitPayment" class="space-y-4">
+          <div v-if="patient" class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
+              პაციენტი: {{ patient.first_name }} {{ patient.last_name }}
+            </p>
+          </div>
+
+          <div v-if="paymentFormData.doctor" class="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <p class="text-sm font-medium text-green-900 dark:text-green-100">
+              ექიმი: {{ paymentFormData.doctor }}
+            </p>
+          </div>
+
+          <Input
+            v-model="paymentFormData.service"
+            type="text"
+            label="სერვისი *"
+            placeholder="მაგ: კონსულტაცია, გამოკვლევა..."
+            required
+          />
+
+          <Input
+            v-model="paymentFormData.amount"
+            type="number"
+            label="თანხა *"
+            placeholder="0.00"
+            step="0.01"
+            min="0"
+            required
+          />
+
+          <Input
+            v-model="paymentFormData.payment_date"
+            type="date"
+            label="გადახდის თარიღი *"
+            required
+          />
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              გადახდის მეთოდი *
+            </label>
+            <select
+              v-model="paymentFormData.payment_method"
+              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              required
+            >
+              <option value="">აირჩიეთ მეთოდი</option>
+              <option value="cash">ნაღდი</option>
+              <option value="card">ბარათი</option>
+              <option value="transfer">გადარიცხვა</option>
+            </select>
+          </div>
+
+          <div v-if="paymentError" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p class="text-sm text-red-800 dark:text-red-300">{{ paymentError }}</p>
+          </div>
+
+          <div class="flex gap-3 pt-4">
+            <Button type="button" variant="secondary" @click="closePaymentModal" :full-width="true">
+              გაუქმება
+            </Button>
+            <Button type="submit" variant="primary" :full-width="true" :disabled="submittingPayment">
+              {{ submittingPayment ? 'შექმნა...' : 'გადახდის შექმნა' }}
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       <!-- Add Visit Modal -->
       <Modal :isOpen="isVisitModalOpen" title="ახალი ვიზიტის დამატება" @close="closeVisitModal">
@@ -243,6 +322,7 @@
 
 <script>
 import axios from 'axios';
+import { useToastStore } from '../stores/toast';
 import Navbar from './Navbar.vue';
 import Button from './ui/Button.vue';
 import Modal from './ui/Modal.vue';
@@ -256,14 +336,21 @@ export default {
     Modal,
     Input
   },
+  setup() {
+    const toastStore = useToastStore();
+    return { toastStore };
+  },
   data() {
     return {
       patient: null,
       visits: [],
       loading: true,
       isVisitModalOpen: false,
+      isPaymentModalOpen: false,
       submitting: false,
+      submittingPayment: false,
       error: '',
+      paymentError: '',
       laborUsers: [],
       visitFormData: {
         date: '',
@@ -271,6 +358,13 @@ export default {
         doctor: '',
         time: '',
         notes: ''
+      },
+      paymentFormData: {
+        service: '',
+        doctor: '',
+        amount: '',
+        payment_date: '',
+        payment_method: ''
       }
     };
   },
@@ -370,6 +464,61 @@ export default {
       this.isVisitModalOpen = false;
       this.error = '';
     },
+    openPaymentModal(visit) {
+      this.isPaymentModalOpen = true;
+      this.paymentError = '';
+      const today = new Date().toISOString().split('T')[0];
+      this.paymentFormData = {
+        service: '',
+        doctor: visit.doctorName || '',
+        amount: '',
+        payment_date: today,
+        payment_method: ''
+      };
+    },
+    closePaymentModal() {
+      this.isPaymentModalOpen = false;
+      this.paymentError = '';
+    },
+    async submitPayment() {
+      this.submittingPayment = true;
+      this.paymentError = '';
+
+      try {
+        if (!this.paymentFormData.service || !this.paymentFormData.amount || 
+            !this.paymentFormData.payment_date || !this.paymentFormData.payment_method) {
+          this.paymentError = 'გთხოვთ შეავსოთ ყველა აუცილებელი ველი';
+          this.submittingPayment = false;
+          return;
+        }
+
+        const token = localStorage.getItem('auth_token');
+        
+        const paymentData = {
+          patient_id: this.$route.params.id,
+          service: this.paymentFormData.service,
+          doctor: this.paymentFormData.doctor || null,
+          amount: parseFloat(this.paymentFormData.amount),
+          payment_date: this.paymentFormData.payment_date,
+          payment_method: this.paymentFormData.payment_method,
+          status: 'paid'
+        };
+
+        await axios.post('/api/payments', paymentData, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        this.closePaymentModal();
+        this.toastStore.success('გადახდა წარმატებით შეიქმნა');
+      } catch (error) {
+        console.error('Failed to create payment:', error);
+        const errorMessage = error.response?.data?.message || error.response?.data?.error || 'შეცდომა მოხდა გადახდის შექმნისას';
+        this.paymentError = errorMessage;
+        this.toastStore.error(errorMessage);
+      } finally {
+        this.submittingPayment = false;
+      }
+    },
     async submitVisit() {
       this.submitting = true;
       this.error = '';
@@ -402,10 +551,12 @@ export default {
         await this.fetchPatientVisits();
         
         this.closeVisitModal();
-        alert('ვიზიტი წარმატებით შეიქმნა');
+        this.toastStore.success('ვიზიტი წარმატებით შეიქმნა');
       } catch (error) {
         console.error('Failed to create visit:', error);
-        this.error = error.response?.data?.message || error.response?.data?.error || 'შეცდომა მოხდა ვიზიტის შექმნისას';
+        const errorMessage = error.response?.data?.message || error.response?.data?.error || 'შეცდომა მოხდა ვიზიტის შექმნისას';
+        this.error = errorMessage;
+        this.toastStore.error(errorMessage);
       } finally {
         this.submitting = false;
       }

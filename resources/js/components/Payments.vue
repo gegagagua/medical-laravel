@@ -253,6 +253,7 @@
 
 <script>
 import axios from 'axios';
+import { useToastStore } from '../stores/toast';
 import Navbar from './Navbar.vue';
 import Table from './ui/Table.vue';
 import Button from './ui/Button.vue';
@@ -267,6 +268,10 @@ export default {
     Button,
     Modal,
     Input
+  },
+  setup() {
+    const toastStore = useToastStore();
+    return { toastStore };
   },
   data() {
     return {
@@ -468,7 +473,7 @@ export default {
 
       // Create CSV content
       if (dataToExport.length === 0) {
-        alert('ექსპორტირებისთვის მონაცემები არ არის');
+        this.toastStore.warning('ექსპორტირებისთვის მონაცემები არ არის');
         return;
       }
 
