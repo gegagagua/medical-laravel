@@ -10,6 +10,7 @@ import Patients from '../components/Patients.vue';
 import PatientDetails from '../components/PatientDetails.vue';
 import Payments from '../components/Payments.vue';
 import Visits from '../components/Visits.vue';
+import Services from '../components/Services.vue';
 
 const routes = [
   {
@@ -67,6 +68,12 @@ const routes = [
     path: '/visits',
     name: 'Visits',
     component: Visits,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/services',
+    name: 'Services',
+    component: Services,
     meta: { requiresAuth: true }
   },
   {

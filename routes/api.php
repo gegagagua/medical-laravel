@@ -6,6 +6,7 @@ use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PatientController;
+use App\Http\Controllers\ServiceController;
 use Illuminate\Support\Facades\Route;
 
 // Authentication
@@ -50,5 +51,14 @@ Route::prefix('payments')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [PaymentController::class, 'index']);
     Route::get('/by-doctor', [PaymentController::class, 'byDoctor']);
     Route::post('/', [PaymentController::class, 'store']);
+});
+
+// Services
+Route::prefix('services')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [ServiceController::class, 'index']);
+    Route::get('/{id}', [ServiceController::class, 'show']);
+    Route::post('/', [ServiceController::class, 'store']);
+    Route::patch('/{id}', [ServiceController::class, 'update']);
+    Route::delete('/{id}', [ServiceController::class, 'destroy']);
 });
 

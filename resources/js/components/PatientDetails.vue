@@ -173,13 +173,27 @@
             </p>
           </div>
 
-          <Input
-            v-model="paymentFormData.service"
-            type="text"
-            label="სერვისი *"
-            placeholder="მაგ: კონსულტაცია, გამოკვლევა..."
-            required
-          />
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              სერვისი *
+            </label>
+            <select
+              v-model="paymentFormData.service"
+              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              required
+              :disabled="!paymentFormData.department"
+              @change="onServiceChange"
+            >
+              <option value="">{{ paymentFormData.department ? 'აირჩიეთ სერვისი' : 'ჯერ აირჩიეთ განყოფილება' }}</option>
+              <option 
+                v-for="service in filteredServices" 
+                :key="service.id" 
+                :value="service.name"
+              >
+                {{ service.name }} - {{ service.price }} ₾
+              </option>
+            </select>
+          </div>
 
           <Input
             v-model="paymentFormData.amount"
@@ -377,7 +391,8 @@ export default {
         payment_date: '',
         payment_method: ''
       },
-      doctorUsers: []
+      doctorUsers: [],
+      services: []
     };
   },
   computed: {
@@ -388,6 +403,14 @@ export default {
       return this.laborUsers.filter(user => 
         user.doctor_role === this.visitFormData.department
       );
+    },
+    filteredServices() {
+      if (!this.paymentFormData.department) {
+        return [];
+      }
+      return this.services.filter(service => 
+        service.department === this.paymentFormData.department
+      );
     }
   },
   watch: {
@@ -395,6 +418,11 @@ export default {
       // Clear doctor selection when department changes
       this.visitFormData.doctor = '';
       this.visitFormData.doctor_id = '';
+    },
+    'paymentFormData.department'() {
+      // Clear service and amount when department changes
+      this.paymentFormData.service = '';
+      this.paymentFormData.amount = '';
     }
   },
   mounted() {
@@ -403,6 +431,7 @@ export default {
     this.fetchPayments();
     this.fetchLaborUsers();
     this.fetchDoctors();
+    this.fetchServices();
   },
   methods: {
     async fetchPatientDetails() {
@@ -493,6 +522,29 @@ export default {
         this.doctorUsers = [];
       }
     },
+    async fetchServices() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get('/api/services', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        this.services = response.data;
+      } catch (error) {
+        console.error('Failed to fetch services:', error);
+        this.services = [];
+      }
+    },
+    onServiceChange() {
+      // Auto-fill amount when service is selected
+      if (this.paymentFormData.service) {
+        const selectedService = this.filteredServices.find(s => s.name === this.paymentFormData.service);
+        if (selectedService) {
+          this.paymentFormData.amount = selectedService.price;
+        }
+      } else {
+        this.paymentFormData.amount = '';
+      }
+    },
     goBack() {
       this.$router.push('/patients');
     },
@@ -545,6 +597,11 @@ export default {
         if (doctor) {
           doctorId = doctor.id;
         }
+      }
+      
+      // Fetch services if not already loaded
+      if (this.services.length === 0) {
+        await this.fetchServices();
       }
       
       this.paymentFormData = {

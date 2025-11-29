@@ -273,5 +273,134 @@ class ServiceSeeder extends Seeder
         foreach ($services as $service) {
             Service::create($service);
         }
+
+        // ენდოკრინოლოგია - ექიმი სხირტლაძე მათიკო
+        $endocrinologyServices = [
+            ['name' => 'კონსულტაცია', 'price' => 80, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'კონსულტაცია - სხირტლაძე მათიკო'],
+            ['name' => 'გან.კონსულტაცია', 'price' => 40, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'გან.კონსულტაცია - სხირტლაძე მათიკო'],
+            ['name' => 'არდი', 'price' => 70, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'არდი - სხირტლაძე მათიკო'],
+            ['name' => 'ბედეფიტი', 'price' => 70, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'ბედეფიტი - სხირტლაძე მათიკო'],
+            ['name' => 'თიბისი', 'price' => 80, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'თიბისი - სხირტლაძე მათიკო'],
+            ['name' => 'აიჯიჯი', 'price' => 80, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'აიჯიჯი - სხირტლაძე მათიკო'],
+        ];
+
+        // ენდოკრინოლოგია - ექიმი ნინო ჩარკვიანი
+        $endocrinologyServicesNino = [
+            ['name' => 'პროფესორის კონსულტაცია', 'price' => 90, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'პროფესორის კონსულტაცია - ჩარკვიანი ნინო'],
+            ['name' => 'გან.კონსულტაცია', 'price' => 45, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'გან.კონსულტაცია - ჩარკვიანი ნინო'],
+            ['name' => 'არდი', 'price' => 80, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'არდი - ჩარკვიანი ნინო'],
+            ['name' => 'ბედეფიტი', 'price' => 80, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'ბედეფიტი - ჩარკვიანი ნინო'],
+            ['name' => 'თიბისი', 'price' => 80, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'თიბისი - ჩარკვიანი ნინო'],
+            ['name' => 'აიჯიჯი', 'price' => 80, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'აიჯიჯი - ჩარკვიანი ნინო'],
+        ];
+
+        // ენდოკრინოლოგია - ექიმი ლია კაჭარავა
+        $endocrinologyServicesLia = [
+            ['name' => 'მედ.დოქტორის კონსულტაცია', 'price' => 80, 'department' => 'ბავშვთა და მოზრდილთა ენდოკრინოლოგია', 'discounted_name' => 'მედ.დოქტორის კონსულტაცია - კაჭარავა ლია'],
+            ['name' => 'კონსულტაცია', 'price' => 80, 'department' => 'ბავშვთა და მოზრდილთა ენდოკრინოლოგია', 'discounted_name' => 'კონსულტაცია - კაჭარავა ლია'],
+            ['name' => 'გან.კონსულტაცია', 'price' => 40, 'department' => 'ბავშვთა და მოზრდილთა ენდოკრინოლოგია', 'discounted_name' => 'გან.კონსულტაცია - კაჭარავა ლია'],
+            ['name' => 'არდი', 'price' => 70, 'department' => 'ბავშვთა და მოზრდილთა ენდოკრინოლოგია', 'discounted_name' => 'არდი - კაჭარავა ლია'],
+            ['name' => 'ბედეფიტი', 'price' => 70, 'department' => 'ბავშვთა და მოზრდილთა ენდოკრინოლოგია', 'discounted_name' => 'ბედეფიტი - კაჭარავა ლია'],
+            ['name' => 'თიბისი', 'price' => 80, 'department' => 'ბავშვთა და მოზრდილთა ენდოკრინოლოგია', 'discounted_name' => 'თიბისი - კაჭარავა ლია'],
+            ['name' => 'აიჯიჯი', 'price' => 80, 'department' => 'ბავშვთა და მოზრდილთა ენდოკრინოლოგია', 'discounted_name' => 'აიჯიჯი - კაჭარავა ლია'],
+        ];
+
+        // ენდოკრინოლოგია - ექიმი ქეთევან ჯანბერიძე
+        $endocrinologyServicesKete = [
+            ['name' => 'კონსულტაცია', 'price' => 80, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'კონსულტაცია - ჯანბერიძე ქეთევან'],
+            ['name' => 'გან.კონსულტაცია', 'price' => 40, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'გან.კონსულტაცია - ჯანბერიძე ქეთევან'],
+            ['name' => 'არდი', 'price' => 70, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'არდი - ჯანბერიძე ქეთევან'],
+            ['name' => 'ბედეფიტი', 'price' => 70, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'ბედეფიტი - ჯანბერიძე ქეთევან'],
+            ['name' => 'თიბისი', 'price' => 80, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'თიბისი - ჯანბერიძე ქეთევან'],
+            ['name' => 'აიჯიჯი', 'price' => 80, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'აიჯიჯი - ჯანბერიძე ქეთევან'],
+        ];
+
+        // ენდოკრინოლოგია - ექიმი ნანა ბიბილეიშვილი
+        $endocrinologyServicesNana = [
+            ['name' => 'მედ.დოქტორის კონსულტაცია', 'price' => 80, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'მედ.დოქტორის კონსულტაცია - ბიბილეიშვილი ნანა'],
+            ['name' => 'კონსულტაცია', 'price' => 80, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'კონსულტაცია - ბიბილეიშვილი ნანა'],
+            ['name' => 'გან.კონსულტაცია', 'price' => 40, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'გან.კონსულტაცია - ბიბილეიშვილი ნანა'],
+            ['name' => 'არდი', 'price' => 70, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'არდი - ბიბილეიშვილი ნანა'],
+            ['name' => 'ბედეფიტი', 'price' => 70, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'ბედეფიტი - ბიბილეიშვილი ნანა'],
+            ['name' => 'თიბისი', 'price' => 80, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'თიბისი - ბიბილეიშვილი ნანა'],
+            ['name' => 'აიჯიჯი', 'price' => 80, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'აიჯიჯი - ბიბილეიშვილი ნანა'],
+        ];
+
+        // სახელმწიფო პროგრამა - ყველა ენდოკრინოლოგისთვის
+        $stateProgramServices = [
+            ['name' => 'სახელმწიფო პროგრამა', 'price' => 240, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'სახელმწიფო პროგრამა'],
+            ['name' => 'სახელმწიფო პროგრამა - 30% თანადაფინანსება', 'price' => 72, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'სახელმწიფო პროგრამა - 30% თანადაფინანსება'],
+            ['name' => 'სახელმწიფო პროგრამა - 50% თანადაფინანსება', 'price' => 120, 'department' => 'ენდოკრინოლოგია', 'discounted_name' => 'სახელმწიფო პროგრამა - 50% თანადაფინანსება'],
+        ];
+
+        // რადიოლოგია - ექიმი ნანა ბიბილეიშვილი
+        $radiologyServicesNana = [
+            ['name' => 'ფარისებრი ჯირკვლის უბგ', 'price' => 70, 'department' => 'რადიოლოგია', 'discounted_name' => 'ფარისებრი ჯირკვლის უბგ - ბიბილეიშვილი ნანა'],
+            ['name' => 'არდი', 'price' => 70, 'department' => 'რადიოლოგია', 'discounted_name' => 'არდი - ბიბილეიშვილი ნანა'],
+            ['name' => 'ბენეფიტი', 'price' => 56, 'department' => 'რადიოლოგია', 'discounted_name' => 'ბენეფიტი - ბიბილეიშვილი ნანა'],
+            ['name' => 'აიჯიჯი', 'price' => 56, 'department' => 'რადიოლოგია', 'discounted_name' => 'აიჯიჯი - ბიბილეიშვილი ნანა'],
+            ['name' => 'თიბისი', 'price' => 70, 'department' => 'რადიოლოგია', 'discounted_name' => 'თიბისი - ბიბილეიშვილი ნანა'],
+        ];
+
+        // რადიოლოგია - ექიმი ნანა ჭიაბერაშვილი
+        $radiologyServicesChia = [
+            ['name' => 'გინეკოლოგიური უბგ', 'price' => 80, 'department' => 'რადიოლოგია', 'discounted_name' => 'გინეკოლოგიური უბგ - ჭიაბერაშვილი ნანა'],
+            ['name' => 'მუცლის ღრუს უბგ', 'price' => 80, 'department' => 'რადიოლოგია', 'discounted_name' => 'მუცლის ღრუს უბგ - ჭიაბერაშვილი ნანა'],
+            ['name' => 'სასარდე სისტემის უბგ', 'price' => 80, 'department' => 'რადიოლოგია', 'discounted_name' => 'სასარდე სისტემის უბგ - ჭიაბერაშვილი ნანა'],
+            ['name' => 'რბილის ქსოვილების უბგ', 'price' => 80, 'department' => 'რადიოლოგია', 'discounted_name' => 'რბილის ქსოვილების უბგ - ჭიაბერაშვილი ნანა'],
+            ['name' => 'მუცლის ღრუს და საშარდე სისტემის უბგ', 'price' => 140, 'department' => 'რადიოლოგია', 'discounted_name' => 'მუცლის ღრუს და საშარდე სისტემის უბგ - ჭიაბერაშვილი ნანა'],
+        ];
+
+        // ოფთალმოლოგია - ექიმი ნინო კარანაძე
+        $ophthalmologyServices = [
+            ['name' => 'პროფესორის კონსულტაცია', 'price' => 100, 'department' => 'ოფთალმოლოგია', 'discounted_name' => 'პროფესორის კონსულტაცია - კარანაძე ნინო'],
+        ];
+
+        // ნევროლოგია - ექიმი ნათია გულიაშვილი
+        $neurologyServices = [
+            ['name' => 'კონსულტაცია', 'price' => 100, 'department' => 'ნევროლოგია', 'discounted_name' => 'კონსულტაცია - გულიაშვილი ნათია'],
+        ];
+
+        // კარდიოლოგია - ექიმი ნონა ჩხობაძე
+        $cardiologyServices = [
+            ['name' => 'კონსულტაცია', 'price' => 80, 'department' => 'კარდიოლოგია', 'discounted_name' => 'კონსულტაცია - ჩხობაძე ნონა'],
+            ['name' => 'კარდიოგრამა', 'price' => 20, 'department' => 'კარდიოლოგია', 'discounted_name' => 'კარდიოგრამა - ჩხობაძე ნონა'],
+        ];
+
+        // ტრავმატოლოგია - ექიმი გიორგი მიროტაძე
+        $traumatologyServices = [
+            ['name' => 'კონსულტაცია', 'price' => 100, 'department' => 'ტრავმატოლოგია', 'discounted_name' => 'კონსულტაცია - მიროტაძე გიორგი'],
+            ['name' => 'ზედა კიდურების სახსარშიდა ინექცია', 'price' => 170, 'department' => 'ტრავმატოლოგია', 'discounted_name' => 'ზედა კიდურების სახსარშიდა ინექცია - მიროტაძე გიორგი'],
+            ['name' => 'ქვედა კიდურების სახსარშიდა ინექცია', 'price' => 180, 'department' => 'ტრავმატოლოგია', 'discounted_name' => 'ქვედა კიდურების სახსარშიდა ინექცია - მიროტაძე გიორგი'],
+            ['name' => 'მუხლის სახსრის პუნქცია', 'price' => 150, 'department' => 'ტრავმატოლოგია', 'discounted_name' => 'მუხლის სახსრის პუნქცია - მიროტაძე გიორგი'],
+        ];
+
+        // ოტორინოლარინგოლოგია - ექიმი ირინე კეკელიძე
+        $otolaryngologyServices = [
+            ['name' => 'კონსულტაცია', 'price' => 80, 'department' => 'ოტორინოლარინგოლოგია', 'discounted_name' => 'კონსულტაცია - კეკელიძე ირინე'],
+            ['name' => 'გან.კონსულტაცია', 'price' => 40, 'department' => 'ოტორინოლარინგოლოგია', 'discounted_name' => 'გან.კონსულტაცია - კეკელიძე ირინე'],
+            ['name' => 'ყურის სანაცია', 'price' => 50, 'department' => 'ოტორინოლარინგოლოგია', 'discounted_name' => 'ყურის სანაცია - კეკელიძე ირინე'],
+        ];
+
+        // ყველა სერვისის დამატება
+        $allNewServices = array_merge(
+            $endocrinologyServices,
+            $endocrinologyServicesNino,
+            $endocrinologyServicesLia,
+            $endocrinologyServicesKete,
+            $endocrinologyServicesNana,
+            $stateProgramServices,
+            $radiologyServicesNana,
+            $radiologyServicesChia,
+            $ophthalmologyServices,
+            $neurologyServices,
+            $cardiologyServices,
+            $traumatologyServices,
+            $otolaryngologyServices
+        );
+
+        foreach ($allNewServices as $service) {
+            Service::create($service);
+        }
     }
 }

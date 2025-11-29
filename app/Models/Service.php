@@ -8,7 +8,9 @@ class Service extends Model
 {
     protected $fillable = [
         'name',
+        'discounted_name',
         'price',
+        'department',
     ];
 
     protected $casts = [
