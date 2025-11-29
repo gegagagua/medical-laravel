@@ -131,7 +131,12 @@
                   </div>
                 </div>
                 <div class="ml-4">
-                  <Button variant="primary" @click="openPaymentModal(visit)" class="text-sm px-3 py-2">
+                  <Button 
+                    v-if="!isVisitPaid(visit)"
+                    variant="primary" 
+                    @click="openPaymentModal(visit)" 
+                    class="text-sm px-3 py-2"
+                  >
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
@@ -164,7 +169,7 @@
 
           <div v-if="paymentFormData.doctor" class="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
             <p class="text-sm font-medium text-green-900 dark:text-green-100">
-              ექიმი: {{ paymentFormData.doctor }}
+              ექიმი: {{ paymentFormData.doctor }}<span v-if="paymentFormData.department"> - {{ paymentFormData.department }}</span>
             </p>
           </div>
 
@@ -345,6 +350,7 @@ export default {
     return {
       patient: null,
       visits: [],
+      payments: [],
       loading: true,
       isVisitModalOpen: false,
       isPaymentModalOpen: false,
@@ -365,6 +371,8 @@ export default {
         service: '',
         doctor_id: '',
         doctor: '',
+        department: '',
+        appointment_id: '',
         amount: '',
         payment_date: '',
         payment_method: ''
@@ -392,6 +400,7 @@ export default {
   mounted() {
     this.fetchPatientDetails();
     this.fetchPatientVisits();
+    this.fetchPayments();
     this.fetchLaborUsers();
     this.fetchDoctors();
   },
@@ -427,6 +436,21 @@ export default {
           .sort((a, b) => new Date(b.date) - new Date(a.date));
       } catch (error) {
         console.error('Failed to fetch visits:', error);
+      }
+    },
+    async fetchPayments() {
+      try {
+        const patientId = this.$route.params.id;
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get('/api/payments', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        // Filter payments for this patient
+        this.payments = response.data.filter(payment => payment.patientId == patientId || payment.patient_id == patientId);
+      } catch (error) {
+        console.error('Failed to fetch payments:', error);
+        this.payments = [];
       }
     },
     async fetchLaborUsers() {
@@ -527,6 +551,8 @@ export default {
         service: '',
         doctor_id: doctorId,
         doctor: visit?.doctorName || '',
+        department: visit?.department || '',
+        appointment_id: visit?.id || '',
         amount: '',
         payment_date: today,
         payment_method: ''
@@ -570,6 +596,7 @@ export default {
         const paymentData = {
           patient_id: this.$route.params.id,
           user_id: this.paymentFormData.doctor_id || null,
+          appointment_id: this.paymentFormData.appointment_id || null,
           service: this.paymentFormData.service,
           doctor: doctorName || null,
           amount: parseFloat(this.paymentFormData.amount),
@@ -583,6 +610,8 @@ export default {
         });
 
         this.closePaymentModal();
+        // Refresh payments to update the UI
+        await this.fetchPayments();
         this.toastStore.success('გადახდა წარმატებით შეიქმნა');
       } catch (error) {
         console.error('Failed to create payment:', error);
@@ -592,6 +621,16 @@ export default {
       } finally {
         this.submittingPayment = false;
       }
+    },
+    isVisitPaid(visit) {
+      if (!visit || !visit.id || !this.payments || this.payments.length === 0) {
+        return false;
+      }
+      
+      // Check if there's a paid payment for this visit by appointment_id
+      return this.payments.some(payment => {
+        return payment.appointmentId == visit.id && payment.status === 'paid';
+      });
     },
     async submitVisit() {
       this.submitting = true;

@@ -18,6 +18,8 @@ class PaymentController extends Controller
                 return [
                     'id' => $payment->id,
                     'invoiceNumber' => $payment->invoice_number,
+                    'patientId' => $payment->patient_id,
+                    'appointmentId' => $payment->appointment_id,
                     'patientName' => $payment->patient->first_name . ' ' . $payment->patient->last_name,
                     'service' => $payment->service,
                     'doctor' => $payment->doctor,
@@ -38,6 +40,7 @@ class PaymentController extends Controller
         $validated = $request->validate([
             'patient_id' => 'required|exists:patients,id',
             'user_id' => 'nullable|exists:users,id',
+            'appointment_id' => 'nullable|exists:appointments,id',
             'service' => 'required|string|max:255',
             'doctor' => 'nullable|string|max:255',
             'amount' => 'required|numeric|min:0',
@@ -49,6 +52,7 @@ class PaymentController extends Controller
         $payment = Payment::create([
             'patient_id' => $validated['patient_id'],
             'user_id' => $validated['user_id'] ?? null,
+            'appointment_id' => $validated['appointment_id'] ?? null,
             'service' => $validated['service'],
             'doctor' => $validated['doctor'] ?? null,
             'amount' => $validated['amount'],
@@ -62,6 +66,8 @@ class PaymentController extends Controller
         return response()->json([
             'id' => $payment->id,
             'invoiceNumber' => $payment->invoice_number,
+            'patientId' => $payment->patient_id,
+            'appointmentId' => $payment->appointment_id,
             'patientName' => $payment->patient->first_name . ' ' . $payment->patient->last_name,
             'service' => $payment->service,
             'doctor' => $payment->doctor,

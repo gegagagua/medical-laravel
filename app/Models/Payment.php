@@ -11,6 +11,7 @@ class Payment extends Model
     protected $fillable = [
         'patient_id',
         'user_id',
+        'appointment_id',
         'service',
         'doctor',
         'amount',
@@ -35,6 +36,11 @@ class Payment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function appointment(): BelongsTo
+    {
+        return $this->belongsTo(Appointment::class);
     }
 
     protected static function boot()
