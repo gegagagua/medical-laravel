@@ -373,12 +373,13 @@ export default {
           : '/api/services';
         const method = this.editingService ? 'patch' : 'post';
 
-        await axios[method](url, this.formData, {
+        const response = await axios[method](url, this.formData, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
 
+        // Success - show green toast, close modal, refresh list
         this.toastStore.showToast(
           this.editingService ? 'სერვისი წარმატებით განახლდა' : 'სერვისი წარმატებით დაემატა',
           'success'
@@ -387,8 +388,24 @@ export default {
         this.closeModal();
       } catch (error) {
         console.error('Failed to save service:', error);
-        this.error = error.response?.data?.message || 'სერვისის შენახვა ვერ მოხერხდა';
-        this.toastStore.showToast('სერვისის შენახვა ვერ მოხერხდა', 'error');
+        // Only show error if response status is 400 or higher
+        if (error.response && error.response.status >= 400) {
+          this.error = error.response?.data?.message || 'სერვისის შენახვა ვერ მოხერხდა';
+          this.toastStore.showToast('სერვისის შენახვა ვერ მოხერხდა', 'error');
+        } else {
+          // For network errors or other issues, still try to show success if we have a response
+          if (error.response && error.response.status < 400) {
+            this.toastStore.showToast(
+              this.editingService ? 'სერვისი წარმატებით განახლდა' : 'სერვისი წარმატებით დაემატა',
+              'success'
+            );
+            await this.fetchServices();
+            this.closeModal();
+          } else {
+            this.error = error.response?.data?.message || 'სერვისის შენახვა ვერ მოხერხდა';
+            this.toastStore.showToast('სერვისის შენახვა ვერ მოხერხდა', 'error');
+          }
+        }
       } finally {
         this.loading = false;
       }
