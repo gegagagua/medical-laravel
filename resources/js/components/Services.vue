@@ -379,32 +379,65 @@ export default {
           }
         });
 
-        // Success - show green toast, close modal, refresh list
-        this.toastStore.showToast(
-          this.editingService ? 'სერვისი წარმატებით განახლდა' : 'სერვისი წარმატებით დაემატა',
-          'success'
-        );
-        await this.fetchServices();
-        this.closeModal();
-      } catch (error) {
-        console.error('Failed to save service:', error);
-        // Only show error if response status is 400 or higher
-        if (error.response && error.response.status >= 400) {
-          this.error = error.response?.data?.message || 'სერვისის შენახვა ვერ მოხერხდა';
-          this.toastStore.showToast('სერვისის შენახვა ვერ მოხერხდა', 'error');
-        } else {
-          // For network errors or other issues, still try to show success if we have a response
-          if (error.response && error.response.status < 400) {
+        // Check if response is successful (status 200-299)
+        // Axios should not throw for 200-299, but we check explicitly
+        if (response && response.status >= 200 && response.status < 300) {
+          // Clear any previous errors immediately
+          this.error = '';
+          
+          try {
+            // Show success toast
             this.toastStore.showToast(
               this.editingService ? 'სერვისი წარმატებით განახლდა' : 'სერვისი წარმატებით დაემატა',
               'success'
             );
+            
+            // Refresh the services list
             await this.fetchServices();
+            
+            // Close the modal
             this.closeModal();
-          } else {
-            this.error = error.response?.data?.message || 'სერვისის შენახვა ვერ მოხერხდა';
-            this.toastStore.showToast('სერვისის შენახვა ვერ მოხერხდა', 'error');
+          } catch (successError) {
+            // If there's an error in the success handling, log it but don't show error to user
+            console.error('Error in success handling:', successError);
+            // Still close modal and refresh if possible
+            try {
+              await this.fetchServices();
+              this.closeModal();
+            } catch (e) {
+              console.error('Error closing modal:', e);
+            }
           }
+        } else {
+          // Unexpected response status
+          throw new Error('Unexpected response status: ' + (response?.status || 'unknown'));
+        }
+      } catch (error) {
+        console.error('Failed to save service:', error);
+        console.error('Error details:', {
+          message: error.message,
+          response: error.response,
+          status: error.response?.status,
+          data: error.response?.data
+        });
+        
+        // Only show error if response status is 400 or higher
+        if (error.response && error.response.status >= 400) {
+          this.error = error.response?.data?.message || 'სერვისის შენახვა ვერ მოხერხდა';
+          this.toastStore.showToast('სერვისის შენახვა ვერ მოხერხდა', 'error');
+        } else if (error.response && error.response.status < 400) {
+          // If we somehow got here with a successful status, treat it as success
+          this.error = '';
+          this.toastStore.showToast(
+            this.editingService ? 'სერვისი წარმატებით განახლდა' : 'სერვისი წარმატებით დაემატა',
+            'success'
+          );
+          await this.fetchServices();
+          this.closeModal();
+        } else {
+          // Network error or other issue
+          this.error = error.message || 'სერვისის შენახვა ვერ მოხერხდა';
+          this.toastStore.showToast('სერვისის შენახვა ვერ მოხერხდა', 'error');
         }
       } finally {
         this.loading = false;
