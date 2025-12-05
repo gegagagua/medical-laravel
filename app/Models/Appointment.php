@@ -13,6 +13,8 @@ class Appointment extends Model
         'doctor_id',
         'doctor_name',
         'department',
+        'service',
+        'service_id',
         'date',
         'time',
         'status',

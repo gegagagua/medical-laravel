@@ -125,6 +125,10 @@
                   <div v-if="visit.department" class="text-sm text-gray-600 dark:text-gray-400 mb-1">
                     <span class="font-medium">განყოფილება:</span> {{ visit.department }}
                   </div>
+
+                  <span class="text-sm text-gray-600 dark:text-gray-400">
+                    <span class="font-medium">სერვისი:</span> {{ visit.service }}
+                  </span>
                   
                   <div v-if="visit.notes" class="text-sm text-gray-600 dark:text-gray-400 mt-2">
                     <span class="font-medium">შენიშვნა:</span> {{ visit.notes }}
@@ -174,62 +178,51 @@
             </p>
           </div>
 
-          <div class="relative">
+          <!-- Service Info Display (read-only) -->
+          <div v-if="paymentFormData.service" class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               სერვისი *
             </label>
-            <div class="relative">
-              <input
-                v-model="serviceSearchQuery"
-                type="text"
-                :placeholder="paymentFormData.department ? 'მოძებნეთ სერვისი...' : 'ჯერ აირჩიეთ განყოფილება'"
-                :disabled="!paymentFormData.department"
-                @focus="isServiceDropdownOpen = true"
-                @input="isServiceDropdownOpen = true; handleServiceSearchInput()"
-                @blur="handleServiceBlur"
-                class="block w-full py-3 px-3 pr-10 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              />
-              <svg 
-                class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <div 
-              v-if="isServiceDropdownOpen && searchableFilteredServices.length > 0 && paymentFormData.department"
-              class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto"
-              @mousedown.prevent
-            >
-              <div
-                v-for="service in searchableFilteredServices"
-                :key="service.id"
-                @mousedown.prevent="selectService(service)"
-                class="px-4 py-2 hover:bg-blue-50 dark:hover:bg-gray-600 cursor-pointer transition"
-              >
-                <div class="font-medium text-gray-900 dark:text-white">{{ service.name }}</div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">{{ service.price }} ₾</div>
-              </div>
-            </div>
-            <div 
-              v-if="isServiceDropdownOpen && searchableFilteredServices.length === 0 && paymentFormData.department && serviceSearchQuery"
-              class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-4 text-center text-gray-500 dark:text-gray-400"
-            >
-              სერვისი არ მოიძებნა
+            <div>
+              <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
+                {{ paymentFormData.service }}
+              </p>
+              <p v-if="paymentFormData.appointment_id" class="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                სერვისი ავტომატურად შეივსო ვიზიტიდან
+              </p>
             </div>
           </div>
+          <div v-else class="p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              სერვისი *
+            </label>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              სერვისი უნდა იყოს არჩეული ვიზიტის შექმნისას
+            </p>
+          </div>
 
-          <Input
-            v-model="paymentFormData.amount"
-            type="number"
-            label="თანხა *"
-            placeholder="0.00"
-            step="0.01"
-            min="0"
-            required
-          />
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              თანხა *
+            </label>
+            <input
+              v-model="paymentFormData.amount"
+              type="number"
+              placeholder="0.00"
+              step="0.01"
+              min="0"
+              required
+              :disabled="!!paymentFormData.service"
+              :readonly="!!paymentFormData.service"
+              :class="[
+                'block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition',
+                paymentFormData.service ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''
+              ]"
+            />
+            <p v-if="paymentFormData.service" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              თანხა ავტომატურად შეივსო სერვისიდან
+            </p>
+          </div>
 
           <Input
             v-model="paymentFormData.payment_date"
@@ -330,6 +323,53 @@
             </select>
           </div>
 
+          <div class="relative">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              სერვისი *
+            </label>
+            <div class="relative">
+              <input
+                v-model="visitServiceSearchQuery"
+                type="text"
+                :placeholder="visitFormData.department ? 'მოძებნეთ სერვისი...' : 'ჯერ აირჩიეთ განყოფილება'"
+                :disabled="!visitFormData.department"
+                @focus="isVisitServiceDropdownOpen = true"
+                @input="isVisitServiceDropdownOpen = true; handleVisitServiceSearchInput()"
+                @blur="handleVisitServiceBlur"
+                class="block w-full py-3 px-3 pr-10 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              />
+              <svg 
+                class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <div 
+              v-if="isVisitServiceDropdownOpen && visitSearchableFilteredServices.length > 0 && visitFormData.department"
+              class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto"
+              @mousedown.prevent
+            >
+              <div
+                v-for="service in visitSearchableFilteredServices"
+                :key="service.id"
+                @mousedown.prevent="selectVisitService(service)"
+                class="px-4 py-2 hover:bg-blue-50 dark:hover:bg-gray-600 cursor-pointer transition"
+              >
+                <div class="font-medium text-gray-900 dark:text-white">{{ service.name }}</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">{{ service.price }} ₾</div>
+              </div>
+            </div>
+            <div 
+              v-if="isVisitServiceDropdownOpen && visitSearchableFilteredServices.length === 0 && visitFormData.department && visitServiceSearchQuery"
+              class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-4 text-center text-gray-500 dark:text-gray-400"
+            >
+              სერვისი არ მოიძებნა
+            </div>
+          </div>
+
           <Input
             v-model="visitFormData.time"
             type="time"
@@ -405,6 +445,8 @@ export default {
         department: '',
         doctor: '',
         doctor_id: '',
+        service: '',
+        service_id: '',
         time: '',
         notes: ''
       },
@@ -421,7 +463,9 @@ export default {
       doctorUsers: [],
       services: [],
       serviceSearchQuery: '',
-      isServiceDropdownOpen: false
+      isServiceDropdownOpen: false,
+      visitServiceSearchQuery: '',
+      isVisitServiceDropdownOpen: false
     };
   },
   computed: {
@@ -456,13 +500,49 @@ export default {
       }
       
       return services;
+    },
+    visitFilteredServices() {
+      if (!this.visitFormData.department) {
+        return [];
+      }
+      return this.services.filter(service => 
+        service.department === this.visitFormData.department
+      );
+    },
+    visitSearchableFilteredServices() {
+      if (!this.visitFormData.department) {
+        return [];
+      }
+      let services = this.visitFilteredServices;
+      
+      if (this.visitServiceSearchQuery) {
+        const query = this.visitServiceSearchQuery.toLowerCase();
+        services = services.filter(service => 
+          service.name.toLowerCase().includes(query) ||
+          service.price.toString().includes(query)
+        );
+      }
+      
+      return services;
     }
   },
   watch: {
     'visitFormData.department'() {
-      // Clear doctor selection when department changes
+      // Clear doctor and service selection when department changes
       this.visitFormData.doctor = '';
       this.visitFormData.doctor_id = '';
+      this.visitFormData.service = '';
+      this.visitFormData.service_id = '';
+      this.visitServiceSearchQuery = '';
+      this.isVisitServiceDropdownOpen = false;
+    },
+    'visitFormData.service'(newValue) {
+      // Sync search query when service is set externally
+      if (newValue && !this.visitServiceSearchQuery) {
+        this.visitServiceSearchQuery = newValue;
+      } else if (!newValue) {
+        this.visitServiceSearchQuery = '';
+      }
     },
     'paymentFormData.department'() {
       // Clear service and amount when department changes
@@ -592,8 +672,26 @@ export default {
     selectService(service) {
       this.paymentFormData.service = service.name;
       this.serviceSearchQuery = service.name;
+      // Auto-fill amount
       this.paymentFormData.amount = service.price;
       this.isServiceDropdownOpen = false;
+    },
+    clearService() {
+      this.paymentFormData.service = '';
+      this.serviceSearchQuery = '';
+      this.paymentFormData.amount = '';
+      this.isServiceDropdownOpen = false;
+    },
+    handlePaymentServiceFocus() {
+      if (!this.paymentFormData.appointment_id) {
+        this.isServiceDropdownOpen = true;
+      }
+    },
+    handlePaymentServiceInput() {
+      if (!this.paymentFormData.appointment_id) {
+        this.isServiceDropdownOpen = true;
+        this.handleServiceSearchInput();
+      }
     },
     handleServiceSearchInput() {
       // If the search query matches a service exactly, select it
@@ -615,6 +713,35 @@ export default {
         // If service is selected, sync search query with it
         if (this.paymentFormData.service && !this.serviceSearchQuery) {
           this.serviceSearchQuery = this.paymentFormData.service;
+        }
+      }, 200);
+    },
+    selectVisitService(service) {
+      this.visitFormData.service = service.name;
+      this.visitFormData.service_id = service.id;
+      this.visitServiceSearchQuery = service.name;
+      this.isVisitServiceDropdownOpen = false;
+    },
+    handleVisitServiceSearchInput() {
+      // If the search query matches a service exactly, select it
+      const exactMatch = this.visitFilteredServices.find(s => 
+        s.name.toLowerCase() === this.visitServiceSearchQuery.toLowerCase()
+      );
+      if (exactMatch) {
+        this.visitFormData.service = exactMatch.name;
+        this.visitFormData.service_id = exactMatch.id;
+      } else if (!this.visitServiceSearchQuery) {
+        this.visitFormData.service = '';
+        this.visitFormData.service_id = '';
+      }
+    },
+    handleVisitServiceBlur() {
+      // Delay closing dropdown to allow click events
+      setTimeout(() => {
+        this.isVisitServiceDropdownOpen = false;
+        // If service is selected, sync search query with it
+        if (this.visitFormData.service && !this.visitServiceSearchQuery) {
+          this.visitServiceSearchQuery = this.visitFormData.service;
         }
       }, 200);
     },
@@ -643,9 +770,13 @@ export default {
         department: '',
         doctor: '',
         doctor_id: '',
+        service: '',
+        service_id: '',
         time: defaultTime,
         notes: ''
       };
+      this.visitServiceSearchQuery = '';
+      this.isVisitServiceDropdownOpen = false;
     },
     updateDoctorName() {
       // Update doctor name when doctor_id changes
@@ -661,6 +792,8 @@ export default {
     closeVisitModal() {
       this.isVisitModalOpen = false;
       this.error = '';
+      this.visitServiceSearchQuery = '';
+      this.isVisitServiceDropdownOpen = false;
     },
     async openPaymentModal(visit) {
       this.isPaymentModalOpen = true;
@@ -688,17 +821,26 @@ export default {
         await this.fetchServices();
       }
       
+      // Get service price if service is selected
+      let servicePrice = '';
+      if (visit?.service) {
+        const selectedService = this.services.find(s => s.name === visit.service || s.id === visit.service_id);
+        if (selectedService) {
+          servicePrice = selectedService.price;
+        }
+      }
+
       this.paymentFormData = {
-        service: '',
+        service: visit?.service || '',
         doctor_id: doctorId,
         doctor: visit?.doctorName || '',
         department: visit?.department || '',
         appointment_id: visit?.id || '',
-        amount: '',
+        amount: servicePrice,
         payment_date: today,
         payment_method: ''
       };
-      this.serviceSearchQuery = '';
+      this.serviceSearchQuery = visit?.service || '';
       this.isServiceDropdownOpen = false;
     },
     closePaymentModal() {
@@ -783,7 +925,7 @@ export default {
 
       try {
         if (!this.visitFormData.date || !this.visitFormData.department || 
-            !this.visitFormData.doctor_id || !this.visitFormData.time) {
+            !this.visitFormData.doctor_id || !this.visitFormData.time || !this.visitFormData.service) {
           this.error = 'გთხოვთ შეავსოთ ყველა აუცილებელი ველი';
           this.submitting = false;
           return;
@@ -796,6 +938,8 @@ export default {
           doctor_id: this.visitFormData.doctor_id,
           doctor_name: this.visitFormData.doctor,
           department: this.visitFormData.department,
+          service: this.visitFormData.service,
+          service_id: this.visitFormData.service_id,
           date: this.visitFormData.date,
           time: this.visitFormData.time,
           status: 'PENDING',
