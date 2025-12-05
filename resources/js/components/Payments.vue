@@ -393,6 +393,28 @@ export default {
             const date = new Date(value);
             return `<span class="text-sm text-gray-600 dark:text-gray-400">${date.toLocaleDateString('ka-GE', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>`;
           }
+        },
+        {
+          key: 'actions',
+          label: 'მოქმედებები',
+          sortable: false,
+          width: '120px',
+          render: (value, item) => {
+            return `
+              <div class="flex justify-center" onclick="event.stopPropagation()">
+                <button 
+                  onclick="window.printPayment(${item.id}); return false;"
+                  class="px-3 py-1 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition cursor-pointer flex items-center gap-1"
+                  title="დაბეჭდვა"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  დაბეჭდვა
+                </button>
+              </div>
+            `;
+          }
         }
       ]
     };
@@ -438,6 +460,12 @@ export default {
     // Set default date to today
     const today = new Date().toISOString().split('T')[0];
     this.formData.payment_date = today;
+    // Make print method available globally for table actions
+    window.printPayment = (id) => this.printPayment(id);
+  },
+  beforeUnmount() {
+    // Clean up global method
+    delete window.printPayment;
   },
   methods: {
     async fetchPatients() {
@@ -636,6 +664,184 @@ export default {
       } finally {
         this.submitting = false;
       }
+    },
+    printPayment(paymentId) {
+      const payment = this.allPayments.find(p => p.id === paymentId || p.invoiceNumber === paymentId);
+      if (!payment) {
+        this.toastStore.warning('გადახდა არ მოიძებნა');
+        return;
+      }
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) return;
+
+      const paymentDate = new Date(payment.date);
+      const formattedDate = paymentDate.toLocaleDateString('ka-GE', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>გადახდის ინვოისი - ${payment.invoiceNumber}</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                padding: 40px;
+                color: #333;
+                max-width: 800px;
+                margin: 0 auto;
+              }
+              .header {
+                text-align: center;
+                margin-bottom: 40px;
+                border-bottom: 3px solid #333;
+                padding-bottom: 20px;
+              }
+              .header h1 {
+                margin: 0;
+                font-size: 28px;
+                font-weight: bold;
+              }
+              .invoice-info {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 30px;
+              }
+              .info-section {
+                flex: 1;
+              }
+              .info-section h3 {
+                margin: 0 0 10px 0;
+                font-size: 14px;
+                color: #666;
+                text-transform: uppercase;
+              }
+              .info-section p {
+                margin: 5px 0;
+                font-size: 16px;
+                font-weight: 500;
+              }
+              .invoice-details {
+                margin: 30px 0;
+                border: 2px solid #333;
+                border-radius: 8px;
+                overflow: hidden;
+              }
+              .detail-row {
+                display: flex;
+                border-bottom: 1px solid #ddd;
+                padding: 15px;
+              }
+              .detail-row:last-child {
+                border-bottom: none;
+              }
+              .detail-label {
+                font-weight: bold;
+                width: 200px;
+                color: #666;
+              }
+              .detail-value {
+                flex: 1;
+                font-size: 16px;
+              }
+              .amount-section {
+                background-color: #f5f5f5;
+                padding: 20px;
+                border-radius: 8px;
+                margin-top: 30px;
+                text-align: center;
+              }
+              .amount-label {
+                font-size: 18px;
+                color: #666;
+                margin-bottom: 10px;
+              }
+              .amount-value {
+                font-size: 36px;
+                font-weight: bold;
+                color: #22c55e;
+              }
+              .footer {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid #ddd;
+                text-align: center;
+                font-size: 12px;
+                color: #666;
+              }
+              @media print {
+                body {
+                  padding: 20px;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>გადახდის ინვოისი</h1>
+              <p style="margin-top: 10px; font-size: 18px; color: #666;">ინვოისი #${payment.invoiceNumber}</p>
+            </div>
+            
+            <div class="invoice-info">
+              <div class="info-section">
+                <h3>პაციენტი</h3>
+                <p>${payment.patientName || '-'}</p>
+              </div>
+              <div class="info-section" style="text-align: right;">
+                <h3>თარიღი</h3>
+                <p>${formattedDate}</p>
+              </div>
+            </div>
+
+            <div class="invoice-details">
+              <div class="detail-row">
+                <div class="detail-label">ექიმი:</div>
+                <div class="detail-value">${payment.doctor || '-'}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">სერვისი:</div>
+                <div class="detail-value">${payment.service || '-'}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">გადახდის მეთოდი:</div>
+                <div class="detail-value">${this.getPaymentMethodLabel(payment.paymentMethod)}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">სტატუსი:</div>
+                <div class="detail-value">${this.getStatusLabel(payment.status)}</div>
+              </div>
+            </div>
+
+            <div class="amount-section">
+              <div class="amount-label">გადასახდელი თანხა</div>
+              <div class="amount-value">₾${Number(payment.amount).toFixed(2)}</div>
+            </div>
+
+            <div class="footer">
+              <p>დაბეჭდილია: ${new Date().toLocaleDateString('ka-GE', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</p>
+            </div>
+          </body>
+        </html>
+      `;
+      
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
     }
   }
 };
