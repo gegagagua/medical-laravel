@@ -283,7 +283,8 @@ export default {
             'Authorization': `Bearer ${token}`
           }
         });
-        this.services = response.data;
+        // Force Vue to recognize the data change
+        this.services = [...response.data];
       } catch (error) {
         console.error('Failed to fetch services:', error);
         this.error = error.response?.data?.message || 'სერვისების ჩატვირთვა ვერ მოხერხდა';
@@ -343,26 +344,31 @@ export default {
     async confirmDelete() {
       if (!this.serviceToDelete) return;
 
-      // Close modal immediately when delete button is clicked
-      this.closeDeleteModal();
-      
-      this.loading = true;
       try {
         const token = localStorage.getItem('auth_token');
-        await axios.delete(`/api/services/${this.serviceToDelete.id}`, {
+        const response = await axios.delete(`/api/services/${this.serviceToDelete.id}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
 
+        // Close modal after successful deletion
+        this.closeDeleteModal();
+        
+        // Show success toast
         this.toastStore.showToast('სერვისი წარმატებით წაიშალა', 'success');
+        
+        // Refresh the services list - ensure it completes before continuing
         await this.fetchServices();
+        
+        // Force Vue to update if needed
+        this.$nextTick(() => {
+          this.$forceUpdate();
+        });
       } catch (error) {
         console.error('Failed to delete service:', error);
         this.error = error.response?.data?.message || 'სერვისის წაშლა ვერ მოხერხდა';
         this.toastStore.showToast('სერვისის წაშლა ვერ მოხერხდა', 'error');
-      } finally {
-        this.loading = false;
       }
     },
     async handleSubmit() {
