@@ -18,11 +18,13 @@ class Appointment extends Model
         'date',
         'time',
         'status',
+        'status_changed_at',
         'notes',
     ];
 
     protected $casts = [
         'date' => 'datetime',
+        'status_changed_at' => 'datetime',
     ];
 
     public function patient(): BelongsTo

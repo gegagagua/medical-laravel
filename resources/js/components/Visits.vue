@@ -156,7 +156,7 @@
           :columns="columns"
           :page-size="10"
           :searchable="true"
-          search-placeholder="მოძებნეთ ვიზიტი (პაციენტი, ექიმი, შენიშვნა)..."
+          search-placeholder="მოძებნეთ ვიზიტი (პაციენტი, ექიმი, სერვისი, შენიშვნა)..."
           empty-message="ვიზიტები არ მოიძებნა"
           :loading="loading"
         />
@@ -226,6 +226,14 @@ export default {
           render: (value) => `<span class="text-sm text-gray-600 dark:text-gray-400">${value || '-'}</span>`
         },
         {
+          key: 'service',
+          label: 'სერვისი',
+          sortable: true,
+          filterable: true,
+          width: '250px',
+          render: (value) => `<span class="text-sm text-gray-600 dark:text-gray-400">${value || '-'}</span>`
+        },
+        {
           key: 'date',
           label: 'თარიღი',
           sortable: true,
@@ -276,6 +284,22 @@ export default {
   computed: {
     filteredAppointments() {
       let filtered = [...this.allAppointments];
+
+      // Filter by logged-in doctor/labor user - show only their visits
+      if (this.authStore.user && (this.authStore.userRole === 'DOCTOR' || this.authStore.userRole === 'LABOR')) {
+        filtered = filtered.filter(a => {
+          // Match by doctor_id
+          if (a.doctor_id) {
+            return a.doctor_id == this.authStore.user.id;
+          }
+          // Fallback: match by doctor name if doctor_id is not available
+          if (a.doctorName) {
+            const userFullName = `${this.authStore.user.first_name} ${this.authStore.user.last_name}`;
+            return a.doctorName === userFullName;
+          }
+          return false;
+        });
+      }
 
       // Filter by patient
       if (this.filters.patientId) {

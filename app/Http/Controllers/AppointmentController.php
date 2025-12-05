@@ -28,6 +28,7 @@ class AppointmentController extends Controller
                 'date' => $appointment->date->toISOString(),
                 'time' => $appointment->time,
                 'status' => $appointment->status,
+                'status_changed_at' => $appointment->status_changed_at ? $appointment->status_changed_at->toISOString() : null,
                 'notes' => $appointment->notes,
                 'createdAt' => $appointment->created_at->toISOString(),
             ];
@@ -52,6 +53,7 @@ class AppointmentController extends Controller
             'date' => $appointment->date->toISOString(),
             'time' => $appointment->time,
             'status' => $appointment->status,
+            'status_changed_at' => $appointment->status_changed_at ? $appointment->status_changed_at->toISOString() : null,
             'notes' => $appointment->notes,
             'createdAt' => $appointment->created_at->toISOString(),
         ]);
@@ -100,6 +102,7 @@ class AppointmentController extends Controller
             'date' => $appointment->date->toISOString(),
             'time' => $appointment->time,
             'status' => $appointment->status,
+            'status_changed_at' => $appointment->status_changed_at ? $appointment->status_changed_at->toISOString() : null,
             'notes' => $appointment->notes,
             'message' => 'Visit created successfully',
         ], 201);
@@ -112,7 +115,10 @@ class AppointmentController extends Controller
         ]);
 
         $appointment = Appointment::findOrFail($id);
-        $appointment->update(['status' => $request->status]);
+        $appointment->update([
+            'status' => $request->status,
+            'status_changed_at' => now()
+        ]);
 
         return response()->json([
             'message' => 'Visit status updated successfully',
