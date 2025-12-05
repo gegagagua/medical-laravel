@@ -212,11 +212,8 @@
               step="0.01"
               min="0"
               required
-              :disabled="!!paymentFormData.service"
-              :readonly="!!paymentFormData.service"
               :class="[
                 'block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition',
-                paymentFormData.service ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''
               ]"
             />
             <p v-if="paymentFormData.service" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
