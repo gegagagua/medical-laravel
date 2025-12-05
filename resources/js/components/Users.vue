@@ -248,6 +248,7 @@
               <option value="კარდიოლოგია">კარდიოლოგია</option>
               <option value="ტრავმატოლოგია">ტრავმატოლოგია</option>
               <option value="ოტორინოლარინგოლოგია">ოტორინოლარინგოლოგია</option>
+              <option value="ლაბორატორია">ლაბორატორია</option>
             </select>
           </div>
 

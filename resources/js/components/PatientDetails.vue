@@ -142,6 +142,7 @@
                     </svg>
                     გადახდის დამატება
                   </Button>
+                  <span v-else class="text-md text-gray-600 dark:text-gray-400">გადახდილია</span>
                 </div>
               </div>
             </div>
@@ -173,26 +174,51 @@
             </p>
           </div>
 
-          <div>
+          <div class="relative">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               სერვისი *
             </label>
-            <select
-              v-model="paymentFormData.service"
-              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              required
-              :disabled="!paymentFormData.department"
-              @change="onServiceChange"
-            >
-              <option value="">{{ paymentFormData.department ? 'აირჩიეთ სერვისი' : 'ჯერ აირჩიეთ განყოფილება' }}</option>
-              <option 
-                v-for="service in filteredServices" 
-                :key="service.id" 
-                :value="service.name"
+            <div class="relative">
+              <input
+                v-model="serviceSearchQuery"
+                type="text"
+                :placeholder="paymentFormData.department ? 'მოძებნეთ სერვისი...' : 'ჯერ აირჩიეთ განყოფილება'"
+                :disabled="!paymentFormData.department"
+                @focus="isServiceDropdownOpen = true"
+                @input="isServiceDropdownOpen = true; handleServiceSearchInput()"
+                @blur="handleServiceBlur"
+                class="block w-full py-3 px-3 pr-10 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              />
+              <svg 
+                class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
               >
-                {{ service.name }} - {{ service.price }} ₾
-              </option>
-            </select>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <div 
+              v-if="isServiceDropdownOpen && searchableFilteredServices.length > 0 && paymentFormData.department"
+              class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto"
+              @mousedown.prevent
+            >
+              <div
+                v-for="service in searchableFilteredServices"
+                :key="service.id"
+                @mousedown.prevent="selectService(service)"
+                class="px-4 py-2 hover:bg-blue-50 dark:hover:bg-gray-600 cursor-pointer transition"
+              >
+                <div class="font-medium text-gray-900 dark:text-white">{{ service.name }}</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">{{ service.price }} ₾</div>
+              </div>
+            </div>
+            <div 
+              v-if="isServiceDropdownOpen && searchableFilteredServices.length === 0 && paymentFormData.department && serviceSearchQuery"
+              class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-4 text-center text-gray-500 dark:text-gray-400"
+            >
+              სერვისი არ მოიძებნა
+            </div>
           </div>
 
           <Input
@@ -278,6 +304,7 @@
               <option value="კარდიოლოგია">კარდიოლოგია</option>
               <option value="ტრავმატოლოგია">ტრავმატოლოგია</option>
               <option value="ოტორინოლარინგოლოგია">ოტორინოლარინგოლოგია</option>
+              <option value="ლაბორატორია">ლაბორატორია</option>
             </select>
           </div>
 
@@ -392,7 +419,9 @@ export default {
         payment_method: ''
       },
       doctorUsers: [],
-      services: []
+      services: [],
+      serviceSearchQuery: '',
+      isServiceDropdownOpen: false
     };
   },
   computed: {
@@ -411,6 +440,22 @@ export default {
       return this.services.filter(service => 
         service.department === this.paymentFormData.department
       );
+    },
+    searchableFilteredServices() {
+      if (!this.paymentFormData.department) {
+        return [];
+      }
+      let services = this.filteredServices;
+      
+      if (this.serviceSearchQuery) {
+        const query = this.serviceSearchQuery.toLowerCase();
+        services = services.filter(service => 
+          service.name.toLowerCase().includes(query) ||
+          service.price.toString().includes(query)
+        );
+      }
+      
+      return services;
     }
   },
   watch: {
@@ -423,6 +468,16 @@ export default {
       // Clear service and amount when department changes
       this.paymentFormData.service = '';
       this.paymentFormData.amount = '';
+      this.serviceSearchQuery = '';
+      this.isServiceDropdownOpen = false;
+    },
+    'paymentFormData.service'(newValue) {
+      // Sync search query when service is set externally
+      if (newValue && !this.serviceSearchQuery) {
+        this.serviceSearchQuery = newValue;
+      } else if (!newValue) {
+        this.serviceSearchQuery = '';
+      }
     }
   },
   mounted() {
@@ -534,6 +589,35 @@ export default {
         this.services = [];
       }
     },
+    selectService(service) {
+      this.paymentFormData.service = service.name;
+      this.serviceSearchQuery = service.name;
+      this.paymentFormData.amount = service.price;
+      this.isServiceDropdownOpen = false;
+    },
+    handleServiceSearchInput() {
+      // If the search query matches a service exactly, select it
+      const exactMatch = this.filteredServices.find(s => 
+        s.name.toLowerCase() === this.serviceSearchQuery.toLowerCase()
+      );
+      if (exactMatch) {
+        this.paymentFormData.service = exactMatch.name;
+        this.paymentFormData.amount = exactMatch.price;
+      } else if (!this.serviceSearchQuery) {
+        this.paymentFormData.service = '';
+        this.paymentFormData.amount = '';
+      }
+    },
+    handleServiceBlur() {
+      // Delay closing dropdown to allow click events
+      setTimeout(() => {
+        this.isServiceDropdownOpen = false;
+        // If service is selected, sync search query with it
+        if (this.paymentFormData.service && !this.serviceSearchQuery) {
+          this.serviceSearchQuery = this.paymentFormData.service;
+        }
+      }, 200);
+    },
     onServiceChange() {
       // Auto-fill amount when service is selected
       if (this.paymentFormData.service) {
@@ -614,10 +698,14 @@ export default {
         payment_date: today,
         payment_method: ''
       };
+      this.serviceSearchQuery = '';
+      this.isServiceDropdownOpen = false;
     },
     closePaymentModal() {
       this.isPaymentModalOpen = false;
       this.paymentError = '';
+      this.serviceSearchQuery = '';
+      this.isServiceDropdownOpen = false;
     },
     async submitPayment() {
       this.submittingPayment = true;

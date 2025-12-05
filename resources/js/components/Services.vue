@@ -120,6 +120,7 @@
               <option value="კარდიოლოგია">კარდიოლოგია</option>
               <option value="ტრავმატოლოგია">ტრავმატოლოგია</option>
               <option value="ოტორინოლარინგოლოგია">ოტორინოლარინგოლოგია</option>
+              <option value="ლაბორატორია">ლაბორატორია</option>
             </select>
           </div>
 
@@ -342,6 +343,9 @@ export default {
     async confirmDelete() {
       if (!this.serviceToDelete) return;
 
+      // Close modal immediately when delete button is clicked
+      this.closeDeleteModal();
+      
       this.loading = true;
       try {
         const token = localStorage.getItem('auth_token');
@@ -353,7 +357,6 @@ export default {
 
         this.toastStore.showToast('სერვისი წარმატებით წაიშალა', 'success');
         await this.fetchServices();
-        this.closeDeleteModal();
       } catch (error) {
         console.error('Failed to delete service:', error);
         this.error = error.response?.data?.message || 'სერვისის წაშლა ვერ მოხერხდა';
