@@ -120,9 +120,15 @@ class AppointmentController extends Controller
             'status_changed_at' => now()
         ]);
 
+        $appointment->refresh();
+
         return response()->json([
             'message' => 'Visit status updated successfully',
-            'visit' => $appointment,
+            'visit' => [
+                'id' => $appointment->id,
+                'status' => $appointment->status,
+                'status_changed_at' => $appointment->status_changed_at ? $appointment->status_changed_at->toISOString() : null,
+            ],
         ]);
     }
 }

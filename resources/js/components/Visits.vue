@@ -168,6 +168,7 @@
 <script>
 import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
+import { useToastStore } from '../stores/toast';
 import Navbar from './Navbar.vue';
 import Table from './ui/Table.vue';
 import Button from './ui/Button.vue';
@@ -181,7 +182,8 @@ export default {
   },
   setup() {
     const authStore = useAuthStore();
-    return { authStore };
+    const toastStore = useToastStore();
+    return { authStore, toastStore };
   },
   data() {
     return {
@@ -255,8 +257,8 @@ export default {
           label: 'სტატუსი',
           sortable: true,
           filterable: true,
-          width: '140px',
-          render: (value) => {
+          width: '180px',
+          render: (value, item) => {
             const statuses = {
               PENDING: { label: 'მოლოდინში', class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
               CONFIRMED: { label: 'დადასტურებული', class: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
@@ -269,7 +271,36 @@ export default {
               completed: { label: 'დასრულებული', class: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' }
             };
             const status = statuses[value] || { label: value, class: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' };
+            const visitId = item.id;
+            const currentStatus = value?.toUpperCase() || value || 'PENDING';
+            const canEdit = window.vm && (window.vm.authStore?.userRole === 'DOCTOR' || window.vm.authStore?.userRole === 'LABOR');
+            
+            if (canEdit) {
+              return `
+                <select 
+                  data-visit-id="${visitId}"
+                  class="visit-status-select px-3 py-1 rounded-lg text-xs font-medium bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  value="${currentStatus}"
+                >
+                  <option value="PENDING" ${currentStatus === 'PENDING' ? 'selected' : ''}>მოლოდინში</option>
+                  <option value="CONFIRMED" ${currentStatus === 'CONFIRMED' ? 'selected' : ''}>დადასტურებული</option>
+                  <option value="CANCELLED" ${currentStatus === 'CANCELLED' ? 'selected' : ''}>გაუქმებული</option>
+                  <option value="COMPLETED" ${currentStatus === 'COMPLETED' ? 'selected' : ''}>დასრულებული</option>
+                </select>
+              `;
+            }
             return `<span class="px-3 py-1 rounded-full text-xs font-medium ${status.class}">${status.label}</span>`;
+          }
+        },
+        {
+          key: 'status_changed_at',
+          label: 'სტატუსის შეცვლის თარიღი',
+          sortable: true,
+          width: '200px',
+          render: (value) => {
+            if (!value) return '<span class="text-sm text-gray-500 dark:text-gray-400">-</span>';
+            const date = new Date(value);
+            return `<span class="text-sm text-gray-600 dark:text-gray-400">${date.toLocaleDateString('ka-GE', { year: 'numeric', month: 'short', day: 'numeric' })} ${date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })}</span>`;
           }
         },
         {
@@ -370,6 +401,22 @@ export default {
     this.authStore.loadFromStorage();
     this.fetchAppointments();
     this.fetchPatients();
+    
+    // Expose component instance to window for dropdown handlers
+    window.vm = this;
+    
+    // Add event delegation for status dropdown changes
+    this.$nextTick(() => {
+      document.addEventListener('change', (e) => {
+        if (e.target.classList.contains('visit-status-select')) {
+          const visitId = parseInt(e.target.dataset.visitId);
+          const newStatus = e.target.value;
+          if (visitId && newStatus) {
+            this.updateVisitStatus(visitId, newStatus);
+          }
+        }
+      });
+    });
   },
   methods: {
     async fetchPatients() {
@@ -418,6 +465,31 @@ export default {
     },
     createNewVisit() {
       this.$router.push('/patients');
+    },
+    async updateVisitStatus(visitId, newStatus) {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.patch(`/api/visits/${visitId}`, {
+          status: newStatus
+        }, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        // Update the visit in the local array
+        const visitIndex = this.allAppointments.findIndex(v => v.id === visitId);
+        if (visitIndex !== -1) {
+          this.allAppointments[visitIndex].status = newStatus;
+          this.allAppointments[visitIndex].status_changed_at = response.data.visit?.status_changed_at || new Date().toISOString();
+        }
+
+        this.toastStore.showToast('სტატუსი წარმატებით განახლდა', 'success');
+        
+        // Refresh appointments to get updated data with status_changed_at
+        await this.fetchAppointments();
+      } catch (error) {
+        console.error('Failed to update visit status:', error);
+        this.toastStore.showToast('სტატუსის განახლება ვერ მოხერხდა', 'error');
+      }
     }
   }
 };
