@@ -23,6 +23,7 @@ Route::prefix('visits')->middleware('auth:sanctum')->group(function () {
     Route::get('/{id}', [AppointmentController::class, 'show']);
     Route::post('/', [AppointmentController::class, 'store']);
     Route::patch('/{id}', [AppointmentController::class, 'update']);
+    Route::delete('/{id}', [AppointmentController::class, 'destroy']);
 });
 
 // Medical Records (ჩაწერები)

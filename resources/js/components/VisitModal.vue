@@ -60,12 +60,11 @@
       </div>
 
       <ServiceSearch
-        v-model="formData.service"
+        v-model="formData.services"
         :services="services"
         :department="formData.department"
         :disabled="!formData.department"
-        placeholder="მოძებნეთ სერვისი..."
-        @select="handleServiceSelect"
+        placeholder="მოძებნეთ სერვისები..."
       />
 
       <Input
@@ -108,6 +107,7 @@ import Modal from './ui/Modal.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import ServiceSearch from './ServiceSearch.vue';
+import { getTodayDateString } from '../utils/dateUtils';
 
 export default {
   name: 'VisitModal',
@@ -143,8 +143,8 @@ export default {
         department: '',
         doctor: '',
         doctor_id: '',
-        service: '',
-        service_id: '',
+        services: [],
+        service_ids: [],
         time: '',
         notes: ''
       },
@@ -171,13 +171,13 @@ export default {
     'formData.department'() {
       this.formData.doctor = '';
       this.formData.doctor_id = '';
-      this.formData.service = '';
-      this.formData.service_id = '';
+      this.formData.services = [];
+      this.formData.service_ids = [];
     }
   },
   methods: {
     resetForm() {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayDateString();
       const now = new Date();
       const defaultTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       this.formData = {
@@ -185,8 +185,8 @@ export default {
         department: '',
         doctor: '',
         doctor_id: '',
-        service: '',
-        service_id: '',
+        services: [],
+        service_ids: [],
         time: defaultTime,
         notes: ''
       };
@@ -203,22 +203,26 @@ export default {
         this.formData.doctor = '';
       }
     },
-    handleServiceSelect(service) {
-      this.formData.service = service.name;
-      this.formData.service_id = service.id;
-    },
     async handleSubmit() {
       this.submitting = true;
       this.error = '';
 
       try {
-        if (!this.formData.service || !this.formData.service_id) {
-          this.error = 'გთხოვთ აირჩიოთ სერვისი';
+        if (!this.formData.services || this.formData.services.length === 0) {
+          this.error = 'გთხოვთ აირჩიოთ მინიმუმ ერთი სერვისი';
           this.submitting = false;
           return;
         }
 
-        this.$emit('submit', { ...this.formData });
+        // Extract service names and IDs
+        const serviceNames = this.formData.services.map(s => s.name);
+        const serviceIds = this.formData.services.map(s => s.id);
+
+        this.$emit('submit', { 
+          ...this.formData,
+          service: serviceNames,
+          service_id: serviceIds
+        });
       } catch (error) {
         this.error = error.message || 'შეცდომა მოხდა';
         this.submitting = false;

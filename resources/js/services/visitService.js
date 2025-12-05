@@ -26,6 +26,13 @@ export const visitService = {
       headers: getAuthHeaders()
     });
     return response.data;
+  },
+
+  async deleteVisit(visitId) {
+    const response = await axios.delete(`/api/visits/${visitId}`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
   }
 };
 

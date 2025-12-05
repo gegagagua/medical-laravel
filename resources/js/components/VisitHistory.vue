@@ -38,34 +38,75 @@
                 <span class="font-medium">განყოფილება:</span> {{ visit.department }}
               </p>
               <p v-if="visit.service">
-                <span class="font-medium">სერვისი:</span> {{ visit.service }}
+                <span class="font-medium">სერვისი:</span> 
+                {{ Array.isArray(visit.service) ? visit.service.join(', ') : visit.service }}
               </p>
               <p v-if="visit.notes">
                 <span class="font-medium">შენიშვნა:</span> {{ visit.notes }}
               </p>
             </div>
           </div>
-          <Button
-            v-if="!hasPayment(visit.id)"
-            variant="primary"
-            size="sm"
-            @click="$emit('add-payment', visit)"
-          >
-            გადახდის დამატება
-          </Button>
+          <div class="flex gap-2">
+            <Button
+              v-if="!hasPayment(visit.id)"
+              variant="primary"
+              size="sm"
+              @click="$emit('add-payment', visit)"
+            >
+              გადახდის დამატება
+            </Button>
+            <Button
+              v-if="isPending(visit.status)"
+              variant="secondary"
+              size="sm"
+              @click="openDeleteModal(visit)"
+              class="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+            >
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              წაშლა
+            </Button>
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <Modal :isOpen="isDeleteModalOpen" title="ვიზიტის წაშლა" @close="closeDeleteModal">
+      <div class="space-y-4">
+        <p class="text-gray-700 dark:text-gray-300">
+          დარწმუნებული ხართ, რომ გსურთ ვიზიტის 
+          <span class="font-semibold text-gray-900 dark:text-white">
+            "{{ getVisitDisplayName() }}"
+          </span>
+          წაშლა?
+        </p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          ეს მოქმედება შეუქცევადია.
+        </p>
+        <div class="flex gap-3 pt-4">
+          <Button type="button" variant="secondary" @click="closeDeleteModal" :full-width="true">
+            გაუქმება
+          </Button>
+          <Button type="button" variant="primary" @click="confirmDelete" :full-width="true" class="bg-red-600 hover:bg-red-700">
+            წაშლა
+          </Button>
+        </div>
+      </div>
+    </Modal>
   </div>
 </template>
 
 <script>
 import Button from './ui/Button.vue';
+import Modal from './ui/Modal.vue';
 
 export default {
   name: 'VisitHistory',
   components: {
-    Button
+    Button,
+    Modal
   },
   props: {
     visits: {
@@ -77,7 +118,13 @@ export default {
       default: () => []
     }
   },
-  emits: ['add-payment'],
+  emits: ['add-payment', 'delete-visit'],
+  data() {
+    return {
+      isDeleteModalOpen: false,
+      visitToDelete: null
+    };
+  },
   methods: {
     formatDate(date) {
       if (!date) return '-';
@@ -115,6 +162,33 @@ export default {
       return this.payments.some(payment => 
         payment.appointment_id == visitId || payment.appointmentId == visitId
       );
+    },
+    isPending(status) {
+      const statusUpper = status?.toUpperCase();
+      return statusUpper === 'PENDING' || statusUpper === 'pending';
+    },
+    openDeleteModal(visit) {
+      this.visitToDelete = visit;
+      this.isDeleteModalOpen = true;
+    },
+    closeDeleteModal() {
+      this.isDeleteModalOpen = false;
+      this.visitToDelete = null;
+    },
+    confirmDelete() {
+      if (this.visitToDelete) {
+        this.$emit('delete-visit', this.visitToDelete);
+        this.closeDeleteModal();
+      }
+    },
+    getVisitDisplayName() {
+      if (!this.visitToDelete) return '';
+      const dateStr = this.formatDate(this.visitToDelete.date);
+      const timeStr = this.visitToDelete.time || '';
+      const serviceStr = Array.isArray(this.visitToDelete.service) 
+        ? this.visitToDelete.service.join(', ') 
+        : (this.visitToDelete.service || '');
+      return `${dateStr} ${timeStr}${serviceStr ? ' - ' + serviceStr : ''}`;
     }
   }
 };

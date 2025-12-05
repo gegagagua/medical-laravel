@@ -16,14 +16,28 @@
       <!-- Service Info Display (read-only) -->
       <div v-if="formData.service" class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          სერვისი *
+          სერვისები *
         </label>
         <div>
-          <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
+          <div v-if="formData.services && formData.services.length > 0" class="space-y-2">
+            <div
+              v-for="(service, index) in formData.services"
+              :key="index"
+              class="flex justify-between items-center py-1 border-b border-blue-200 dark:border-blue-700 last:border-b-0"
+            >
+              <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
+                {{ service.name }}
+              </p>
+              <p class="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                {{ service.price }} ₾
+              </p>
+            </div>
+          </div>
+          <p v-else class="text-sm font-medium text-blue-900 dark:text-blue-100">
             {{ formData.service }}
           </p>
-          <p v-if="formData.appointment_id" class="text-xs text-blue-700 dark:text-blue-300 mt-1">
-            სერვისი ავტომატურად შეივსო ვიზიტიდან
+          <p v-if="formData.appointment_id" class="text-xs text-blue-700 dark:text-blue-300 mt-2">
+            სერვისები ავტომატურად შეივსო ვიზიტიდან
           </p>
         </div>
       </div>
@@ -47,11 +61,8 @@
           step="0.01"
           min="0"
           required
-          :disabled="!!formData.service"
-          :readonly="!!formData.service"
           :class="[
             'block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition',
-            formData.service ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''
           ]"
         />
         <p v-if="formData.service" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -123,6 +134,7 @@ export default {
       type: Object,
       default: () => ({
         service: '',
+        services: [], // Array of {name, price} objects
         doctor_id: '',
         doctor: '',
         department: '',

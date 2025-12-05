@@ -169,6 +169,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast';
+import { getTodayDateString, formatDateToInput } from '../utils/dateUtils';
 import Navbar from './Navbar.vue';
 import Table from './ui/Table.vue';
 import Button from './ui/Button.vue';
@@ -233,7 +234,11 @@ export default {
           sortable: true,
           filterable: true,
           width: '250px',
-          render: (value) => `<span class="text-sm text-gray-600 dark:text-gray-400">${value || '-'}</span>`
+          render: (value) => {
+            if (!value) return '<span class="text-sm text-gray-600 dark:text-gray-400">-</span>';
+            const services = Array.isArray(value) ? value : [value];
+            return `<span class="text-sm text-gray-600 dark:text-gray-400">${services.join(', ')}</span>`;
+          }
         },
         {
           key: 'date',
@@ -359,14 +364,14 @@ export default {
       // Filter by date range
       if (this.filters.dateFrom) {
         filtered = filtered.filter(a => {
-          const visitDate = new Date(a.date).toISOString().split('T')[0];
+          const visitDate = formatDateToInput(a.date);
           return visitDate >= this.filters.dateFrom;
         });
       }
 
       if (this.filters.dateTo) {
         filtered = filtered.filter(a => {
-          const visitDate = new Date(a.date).toISOString().split('T')[0];
+          const visitDate = formatDateToInput(a.date);
           return visitDate <= this.filters.dateTo;
         });
       }
@@ -389,9 +394,9 @@ export default {
       }).length;
     },
     todayAppointments() {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayDateString();
       return this.filteredAppointments.filter(a => {
-        const visitDate = new Date(a.date).toISOString().split('T')[0];
+        const visitDate = formatDateToInput(a.date);
         return visitDate === today;
       }).length;
     }

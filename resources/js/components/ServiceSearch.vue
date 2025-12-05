@@ -1,7 +1,7 @@
 <template>
   <div class="relative">
     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-      სერვისი *
+      სერვისები *
     </label>
     <div class="relative">
       <input
@@ -18,6 +18,25 @@
           'bg-gray-100 dark:bg-gray-800 cursor-not-allowed': disabled || readonly
         }"
       />
+      <!-- Selected Services Display -->
+      <div v-if="selectedServices.length > 0" class="mt-2 flex flex-wrap gap-2">
+        <span
+          v-for="(service, index) in selectedServices"
+          :key="service.id"
+          class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm"
+        >
+          {{ service.name }}
+          <button
+            type="button"
+            @click="removeService(index)"
+            class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </span>
+      </div>
       <div
         v-if="isDropdownOpen && filteredServices.length > 0"
         class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto"
@@ -26,12 +45,23 @@
           v-for="service in filteredServices"
           :key="service.id"
           @mousedown.prevent="selectService(service)"
-          class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+          :class="[
+            'px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-200 dark:border-gray-700 last:border-b-0',
+            isServiceSelected(service.id) ? 'bg-blue-50 dark:bg-blue-900/30' : ''
+          ]"
         >
           <div class="flex justify-between items-center">
-            <span class="text-sm font-medium text-gray-900 dark:text-white">
-              {{ service.name }}
-            </span>
+            <div class="flex items-center gap-2">
+              <input
+                type="checkbox"
+                :checked="isServiceSelected(service.id)"
+                @change="toggleService(service)"
+                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span class="text-sm font-medium text-gray-900 dark:text-white">
+                {{ service.name }}
+              </span>
+            </div>
             <span class="text-sm text-gray-500 dark:text-gray-400">
               {{ service.price }} ₾
             </span>
@@ -53,8 +83,8 @@ export default {
   name: 'ServiceSearch',
   props: {
     modelValue: {
-      type: String,
-      default: ''
+      type: Array,
+      default: () => []
     },
     services: {
       type: Array,
@@ -81,7 +111,8 @@ export default {
   data() {
     return {
       searchQuery: '',
-      isDropdownOpen: false
+      isDropdownOpen: false,
+      selectedServices: []
     };
   },
   computed: {
@@ -105,16 +136,23 @@ export default {
     }
   },
   watch: {
-    modelValue(newValue) {
-      if (newValue && !this.searchQuery) {
-        this.searchQuery = newValue;
-      } else if (!newValue) {
-        this.searchQuery = '';
-      }
+    modelValue: {
+      handler(newValue) {
+        if (Array.isArray(newValue)) {
+          this.selectedServices = [...newValue];
+        } else {
+          this.selectedServices = [];
+        }
+      },
+      immediate: true,
+      deep: true
     },
     department() {
       this.searchQuery = '';
       this.isDropdownOpen = false;
+      // Clear selected services when department changes
+      this.selectedServices = [];
+      this.$emit('update:modelValue', []);
     }
   },
   methods: {
@@ -126,7 +164,6 @@ export default {
     handleInput() {
       if (!this.disabled && !this.readonly) {
         this.isDropdownOpen = true;
-        this.$emit('update:modelValue', this.searchQuery);
       }
     },
     handleBlur() {
@@ -135,13 +172,29 @@ export default {
         this.isDropdownOpen = false;
       }, 200);
     },
+    isServiceSelected(serviceId) {
+      return this.selectedServices.some(s => s.id === serviceId);
+    },
+    toggleService(service) {
+      const index = this.selectedServices.findIndex(s => s.id === service.id);
+      if (index > -1) {
+        this.removeService(index);
+      } else {
+        this.selectService(service);
+      }
+    },
     selectService(service) {
-      this.searchQuery = service.name;
-      this.isDropdownOpen = false;
-      this.$emit('update:modelValue', service.name);
-      this.$emit('select', service);
+      if (!this.isServiceSelected(service.id)) {
+        this.selectedServices.push(service);
+        this.$emit('update:modelValue', [...this.selectedServices]);
+        this.$emit('select', service);
+      }
+      this.searchQuery = '';
+    },
+    removeService(index) {
+      this.selectedServices.splice(index, 1);
+      this.$emit('update:modelValue', [...this.selectedServices]);
     }
   }
 };
 </script>
-

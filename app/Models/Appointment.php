@@ -25,6 +25,8 @@ class Appointment extends Model
     protected $casts = [
         'date' => 'datetime',
         'status_changed_at' => 'datetime',
+        'service' => 'array',
+        'service_id' => 'array',
     ];
 
     public function patient(): BelongsTo

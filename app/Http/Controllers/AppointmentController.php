@@ -66,8 +66,10 @@ class AppointmentController extends Controller
             'doctor_id' => 'nullable|exists:users,id',
             'doctor_name' => 'required|string|max:255',
             'department' => 'required|string|max:255',
-            'service' => 'required|string|max:255',
-            'service_id' => 'nullable|exists:services,id',
+            'service' => 'required|array|min:1',
+            'service.*' => 'required|string|max:255',
+            'service_id' => 'required|array|min:1',
+            'service_id.*' => 'required|exists:services,id',
             'date' => 'required|date',
             'time' => 'required|string',
             'status' => 'sometimes|in:PENDING,CONFIRMED,CANCELLED,COMPLETED',
@@ -82,8 +84,8 @@ class AppointmentController extends Controller
             'doctor_id' => $validated['doctor_id'] ?? null,
             'doctor_name' => $validated['doctor_name'],
             'department' => $validated['department'],
-            'service' => $validated['service'],
-            'service_id' => $validated['service_id'] ?? null,
+            'service' => $validated['service'], // JSON array
+            'service_id' => $validated['service_id'], // JSON array
             'date' => $dateTime,
             'time' => $validated['time'],
             'status' => $validated['status'] ?? 'PENDING',
@@ -129,6 +131,24 @@ class AppointmentController extends Controller
                 'status' => $appointment->status,
                 'status_changed_at' => $appointment->status_changed_at ? $appointment->status_changed_at->toISOString() : null,
             ],
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $appointment = Appointment::findOrFail($id);
+        
+        // Only allow deletion if status is PENDING
+        if ($appointment->status !== 'PENDING') {
+            return response()->json([
+                'message' => 'მხოლოდ მოლოდინში მყოფი ვიზიტების წაშლაა შესაძლებელი'
+            ], 422);
+        }
+
+        $appointment->delete();
+
+        return response()->json([
+            'message' => 'Visit deleted successfully'
         ]);
     }
 }

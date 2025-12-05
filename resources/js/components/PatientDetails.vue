@@ -30,6 +30,7 @@
           :visits="visits" 
           :payments="payments"
           @add-payment="openPaymentModal"
+          @delete-visit="handleDeleteVisit"
         />
       </div>
 
@@ -70,6 +71,7 @@ import { visitService } from '../services/visitService';
 import { paymentService } from '../services/paymentService';
 import { userService } from '../services/userService';
 import { serviceService } from '../services/serviceService';
+import { getTodayDateString } from '../utils/dateUtils';
 import Navbar from './Navbar.vue';
 import Button from './ui/Button.vue';
 import PatientInfoCard from './PatientInfoCard.vue';
@@ -105,6 +107,7 @@ export default {
       services: [],
       paymentFormData: {
         service: '',
+        services: [], // Array of {name, price} objects
         doctor_id: '',
         doctor: '',
         department: '',
@@ -220,7 +223,7 @@ export default {
     },
     async openPaymentModal(visit) {
       this.isPaymentModalOpen = true;
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayDateString();
       
       // Use visit's doctor_id directly if available, otherwise try to find by name
       let doctorId = visit?.doctor_id || null;
@@ -243,17 +246,40 @@ export default {
         await this.fetchServices();
       }
       
-      // Get service price if service is selected
+      // Get service price if services are selected (handle both array and string for backward compatibility)
       let servicePrice = '';
+      let serviceName = '';
+      let servicesList = [];
+      
       if (visit?.service) {
-        const selectedService = this.services.find(s => s.name === visit.service || s.id === visit.service_id);
-        if (selectedService) {
-          servicePrice = selectedService.price;
+        // Handle array of services
+        if (Array.isArray(visit.service) && visit.service.length > 0) {
+          serviceName = visit.service.join(', ');
+          // Get services with prices
+          if (Array.isArray(visit.service_id) && visit.service_id.length > 0) {
+            servicesList = visit.service_id.map(serviceId => {
+              const service = this.services.find(s => s.id === serviceId);
+              return service ? { name: service.name, price: service.price } : null;
+            }).filter(s => s !== null);
+            
+            // Calculate total price from all services
+            const totalPrice = servicesList.reduce((sum, s) => sum + parseFloat(s.price), 0);
+            servicePrice = totalPrice.toFixed(2);
+          }
+        } else if (typeof visit.service === 'string') {
+          // Backward compatibility: single service as string
+          serviceName = visit.service;
+          const selectedService = this.services.find(s => s.name === visit.service || s.id === visit.service_id);
+          if (selectedService) {
+            servicePrice = selectedService.price;
+            servicesList = [{ name: selectedService.name, price: selectedService.price }];
+          }
         }
       }
 
       this.paymentFormData = {
-        service: visit?.service || '',
+        service: serviceName,
+        services: servicesList, // Array of {name, price} objects
         doctor_id: doctorId,
         doctor: visit?.doctorName || '',
         department: visit?.department || '',
@@ -267,6 +293,7 @@ export default {
       this.isPaymentModalOpen = false;
       this.paymentFormData = {
         service: '',
+        services: [],
         doctor_id: '',
         doctor: '',
         department: '',
@@ -505,6 +532,17 @@ export default {
         completed: 'დასრულებული'
       };
       return statuses[status] || status;
+    },
+    async handleDeleteVisit(visit) {
+      try {
+        await visitService.deleteVisit(visit.id);
+        this.toastStore.success('ვიზიტი წარმატებით წაიშალა');
+        await this.fetchPatientVisits();
+      } catch (error) {
+        console.error('Failed to delete visit:', error);
+        const errorMessage = error.response?.data?.message || 'ვიზიტის წაშლა ვერ მოხერხდა';
+        this.toastStore.error(errorMessage);
+      }
     }
   }
 };
