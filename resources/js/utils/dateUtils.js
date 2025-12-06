@@ -23,3 +23,4 @@ export function formatDateToInput(date) {
   return `${year}-${month}-${day}`;
 }
 
+

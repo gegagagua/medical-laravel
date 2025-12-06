@@ -242,18 +242,18 @@
           </h2>
 
           <!-- Empty State -->
-          <div v-if="visits.length === 0" class="text-center py-12">
+          <div v-if="todayVisits.length === 0" class="text-center py-12">
             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">ვიზიტები არ მოიძებნა</h3>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">ამ მომხმარებელს ჯერ არ ჰქონია ვიზიტები</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">ამ მომხმარებელს დღეს ვიზიტები არ ჰქონია</p>
           </div>
 
           <!-- Visits List -->
           <div v-else class="space-y-4">
             <div
-              v-for="visit in visits"
+              v-for="visit in todayVisits"
               :key="visit.id"
               class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
               @click="goToPatient(visit.patient_id)"
@@ -303,6 +303,7 @@
 import axios from 'axios';
 import Navbar from './Navbar.vue';
 import Button from './ui/Button.vue';
+import { getTodayDateString, formatDateToInput } from '../utils/dateUtils';
 
 export default {
   name: 'UserDetails',
@@ -349,27 +350,54 @@ export default {
     },
     dailyPayments() {
       if (!this.payments || this.payments.length === 0) return [];
+      
+      // Get today's date in YYYY-MM-DD format (local time, GMT+4)
+      const todayString = getTodayDateString();
+      
+      // Filter only today's payments
+      const todayPayments = this.payments.filter(payment => {
+        if (!payment.date) return false;
+        const paymentDateString = formatDateToInput(payment.date);
+        return paymentDateString === todayString;
+      });
+      
+      if (todayPayments.length === 0) return [];
+      
+      // Group by date (should only be today)
       const grouped = {};
-      this.payments.forEach(payment => {
+      todayPayments.forEach(payment => {
         if (!payment.date) return;
-        const date = new Date(payment.date).toISOString().split('T')[0];
-        if (!grouped[date]) {
-          grouped[date] = {
-            date: date,
+        const dateString = formatDateToInput(payment.date);
+        if (!grouped[dateString]) {
+          grouped[dateString] = {
+            date: dateString,
             total: 0,
             payments: []
           };
         }
-        grouped[date].payments.push(payment);
+        grouped[dateString].payments.push(payment);
       });
+      
       return Object.values(grouped)
-        .sort((a, b) => new Date(b.date) - new Date(a.date))
         .map(day => ({
           ...day,
           total: day.payments
             .filter(p => p.status === 'paid')
             .reduce((sum, p) => sum + Number(p.amount || 0), 0)
         }));
+    },
+    todayVisits() {
+      if (!this.visits || this.visits.length === 0) return [];
+      
+      // Get today's date in YYYY-MM-DD format (local time, GMT+4)
+      const todayString = getTodayDateString();
+      
+      // Filter only today's visits
+      return this.visits.filter(visit => {
+        if (!visit.date) return false;
+        const visitDateString = formatDateToInput(visit.date);
+        return visitDateString === todayString;
+      });
     }
   },
   watch: {
