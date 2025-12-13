@@ -343,7 +343,37 @@ export default {
           label: 'სერვისი',
           sortable: true,
           filterable: true,
-          render: (value) => `<span class="text-sm text-gray-600 dark:text-gray-400">${value}</span>`
+          render: (value, item) => {
+            let html = `<div class="text-sm text-gray-600 dark:text-gray-400">`;
+            
+            // If there are services with discounts, show them separately
+            if (item.servicesDiscounts && Array.isArray(item.servicesDiscounts) && item.servicesDiscounts.length > 0) {
+              item.servicesDiscounts.forEach((service, index) => {
+                const serviceName = service.name || '';
+                const servicePrice = parseFloat(service.price) || 0;
+                const discount = parseFloat(service.discount) || 0;
+                const discountedPrice = servicePrice * (1 - discount / 100);
+                
+                html += `<div class="mb-1 ${index > 0 ? 'mt-2 pt-2 border-t border-gray-200 dark:border-gray-700' : ''}">`;
+                html += `<div class="font-medium">${serviceName}</div>`;
+                html += `<div class="text-xs text-gray-500 dark:text-gray-500 mt-0.5">`;
+                if (discount > 0) {
+                  html += `<span class="line-through text-gray-400">₾${servicePrice.toFixed(2)}</span> `;
+                  html += `<span class="text-green-600 dark:text-green-400 font-semibold">₾${discountedPrice.toFixed(2)}</span> `;
+                  html += `<span class="text-orange-600 dark:text-orange-400">(-${discount.toFixed(2)}%)</span>`;
+                } else {
+                  html += `<span>₾${servicePrice.toFixed(2)}</span>`;
+                }
+                html += `</div></div>`;
+              });
+            } else {
+              // Fallback to regular service display
+              html += `<span>${value}</span>`;
+            }
+            
+            html += `</div>`;
+            return html;
+          }
         },
         {
           key: 'amount',
@@ -533,12 +563,31 @@ export default {
       // Export filtered payments to Excel
       const dataToExport = this.filteredPayments.map(payment => {
         const date = new Date(payment.date);
+        
+        // Format services with discounts
+        let servicesText = payment.service || '-';
+        if (payment.servicesDiscounts && Array.isArray(payment.servicesDiscounts) && payment.servicesDiscounts.length > 0) {
+          servicesText = payment.servicesDiscounts.map(service => {
+            const serviceName = service.name || '';
+            const servicePrice = parseFloat(service.price) || 0;
+            const discount = parseFloat(service.discount) || 0;
+            const discountedPrice = servicePrice * (1 - discount / 100);
+            
+            if (discount > 0) {
+              return `${serviceName}: ₾${servicePrice.toFixed(2)} → ₾${discountedPrice.toFixed(2)} (-${discount.toFixed(2)}%)`;
+            } else {
+              return `${serviceName}: ₾${servicePrice.toFixed(2)}`;
+            }
+          }).join(' | ');
+        }
+        
         return {
           'ინვოისი': payment.invoiceNumber,
           'პაციენტი': payment.patientName,
           'ექიმი': payment.doctor || '-',
-          'სერვისი': payment.service,
+          'სერვისები': servicesText,
           'თანხა': Number(payment.amount).toFixed(2),
+          'ფასდაკლება': payment.hasDiscount ? `${payment.discountPercentage?.toFixed(2) || 0}%` : '-',
           'გადახდის მეთოდი': this.getPaymentMethodLabel(payment.paymentMethod),
           'სტატუსი': this.getStatusLabel(payment.status),
           'თარიღი': date.toLocaleDateString('ka-GE', { year: 'numeric', month: '2-digit', day: '2-digit' }),
@@ -609,6 +658,39 @@ export default {
         cancelled: 'გაუქმებული'
       };
       return statuses[status] || status;
+    },
+    formatServicesForPrint(payment) {
+      // If there are services with discounts, show them separately
+      if (payment.servicesDiscounts && Array.isArray(payment.servicesDiscounts) && payment.servicesDiscounts.length > 0) {
+        let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+        
+        payment.servicesDiscounts.forEach((service, index) => {
+          const serviceName = service.name || '';
+          const servicePrice = parseFloat(service.price) || 0;
+          const discount = parseFloat(service.discount) || 0;
+          const discountedPrice = servicePrice * (1 - discount / 100);
+          
+          html += '<div style="padding: 10px; background-color: #f9fafb; border-radius: 6px; border-left: 3px solid #3b82f6;">';
+          html += `<div style="font-weight: 600; font-size: 15px; margin-bottom: 6px;">${serviceName}</div>`;
+          html += '<div style="font-size: 13px; color: #666;">';
+          
+          if (discount > 0) {
+            html += `<span style="text-decoration: line-through; color: #999; margin-right: 8px;">₾${servicePrice.toFixed(2)}</span>`;
+            html += `<span style="color: #22c55e; font-weight: 600; margin-right: 8px;">₾${discountedPrice.toFixed(2)}</span>`;
+            html += `<span style="color: #f97316; font-weight: 500;">(ფასდაკლება: ${discount.toFixed(2)}%)</span>`;
+          } else {
+            html += `<span style="font-weight: 500;">₾${servicePrice.toFixed(2)}</span>`;
+          }
+          
+          html += '</div></div>';
+        });
+        
+        html += '</div>';
+        return html;
+      } else {
+        // Fallback to regular service display
+        return `<span>${payment.service || '-'}</span>`;
+      }
     },
     openModal() {
       this.isModalOpen = true;
@@ -805,8 +887,10 @@ export default {
                 <div class="detail-value">${payment.doctor || '-'}</div>
               </div>
               <div class="detail-row">
-                <div class="detail-label">სერვისი:</div>
-                <div class="detail-value">${payment.service || '-'}</div>
+                <div class="detail-label">სერვისები:</div>
+                <div class="detail-value">
+                  ${this.formatServicesForPrint(payment)}
+                </div>
               </div>
               <div class="detail-row">
                 <div class="detail-label">გადახდის მეთოდი:</div>

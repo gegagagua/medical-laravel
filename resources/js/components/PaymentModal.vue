@@ -23,13 +23,26 @@
             <div
               v-for="(service, index) in formData.services"
               :key="index"
-              class="flex justify-between items-center py-1 border-b border-blue-200 dark:border-blue-700 last:border-b-0"
+              class="flex justify-between items-center gap-3 py-2 border-b border-blue-200 dark:border-blue-700 last:border-b-0"
             >
-              <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
+              <p class="text-sm font-medium text-blue-900 dark:text-blue-100 flex-1">
                 {{ service.name }}
               </p>
-              <p class="text-sm font-semibold text-blue-700 dark:text-blue-300">
-                {{ service.price }} ₾
+              <div class="flex items-center gap-1">
+                <input
+                  v-model.number="service.discount"
+                  type="number"
+                  placeholder="ფასდაკლება"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  class="w-16 py-0.5 px-1.5 text-xs border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  @input="updateTotalAmount"
+                />
+                <span class="text-xs text-gray-500 dark:text-gray-400">%</span>
+              </div>
+              <p class="text-sm font-semibold text-blue-700 dark:text-blue-300 min-w-[80px] text-right">
+                {{ getDiscountedPrice(service) }} ₾
               </p>
             </div>
           </div>
@@ -157,10 +170,39 @@ export default {
       if (newValue) {
         this.error = '';
         this.submitting = false;
+        // Initialize discount property for each service if it doesn't exist
+        if (this.formData.services && this.formData.services.length > 0) {
+          this.formData.services.forEach(service => {
+            if (service.discount === undefined) {
+              this.$set(service, 'discount', 0);
+            }
+          });
+          this.updateTotalAmount();
+        }
       }
     }
   },
   methods: {
+    getDiscountedPrice(service) {
+      const originalPrice = parseFloat(service.price) || 0;
+      const discount = parseFloat(service.discount) || 0;
+      const discountedPrice = originalPrice * (1 - discount / 100);
+      return discountedPrice.toFixed(2);
+    },
+    updateTotalAmount() {
+      if (!this.formData.services || this.formData.services.length === 0) {
+        return;
+      }
+      
+      const total = this.formData.services.reduce((sum, service) => {
+        const originalPrice = parseFloat(service.price) || 0;
+        const discount = parseFloat(service.discount) || 0;
+        const discountedPrice = originalPrice * (1 - discount / 100);
+        return sum + discountedPrice;
+      }, 0);
+      
+      this.formData.amount = total.toFixed(2);
+    },
     handleSubmit() {
       this.submitting = true;
       this.error = '';
@@ -177,4 +219,17 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+/* Hide number input arrows */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+</style>
 

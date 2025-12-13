@@ -15,6 +15,9 @@ class Payment extends Model
         'service',
         'doctor',
         'amount',
+        'has_discount',
+        'discount_percentage',
+        'services_discounts',
         'payment_date',
         'payment_method',
         'status',
@@ -24,6 +27,9 @@ class Payment extends Model
     protected $casts = [
         'payment_date' => 'date',
         'amount' => 'decimal:2',
+        'has_discount' => 'boolean',
+        'discount_percentage' => 'decimal:2',
+        'services_discounts' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

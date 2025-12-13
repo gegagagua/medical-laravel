@@ -331,7 +331,8 @@ export default {
           amount: parseFloat(paymentData.amount),
           payment_date: paymentData.payment_date,
           payment_method: paymentData.payment_method,
-          status: 'paid'
+          status: 'paid',
+          services: paymentData.services || null
         };
 
         await paymentService.createPayment(paymentPayload);
