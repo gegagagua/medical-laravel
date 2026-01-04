@@ -7,6 +7,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\PdfController;
 use Illuminate\Support\Facades\Route;
 
 // Authentication
@@ -67,5 +68,11 @@ Route::prefix('services')->middleware('auth:sanctum')->group(function () {
     Route::post('/', [ServiceController::class, 'store']);
     Route::patch('/{id}', [ServiceController::class, 'update']);
     Route::delete('/{id}', [ServiceController::class, 'destroy']);
+});
+
+// PDF Files
+Route::prefix('pdf')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [PdfController::class, 'index']);
+    Route::get('/download/{filename}', [PdfController::class, 'download']);
 });
 

@@ -119,9 +119,32 @@
             />
           </div>
 
-          <div class="flex items-end">
+          <div class="flex items-end gap-2">
+            <Button 
+              v-if="selectedPayments.length > 0" 
+              variant="primary" 
+              @click="printSelectedPayments" 
+              class="w-full"
+            >
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              დაბეჭდვა ({{ selectedPayments.length }})
+            </Button>
             <Button variant="secondary" @click="clearFilters" class="w-full">
               ფილტრების გასუფთავება
+            </Button>
+          </div>
+        </div>
+
+        <!-- Selected Payments Info -->
+        <div v-if="selectedPayments.length > 0" class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div class="flex items-center justify-between">
+            <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
+              არჩეულია {{ selectedPayments.length }} გადახდა
+            </p>
+            <Button variant="secondary" size="sm" @click="clearSelection">
+              გასუფთავება
             </Button>
           </div>
         </div>
@@ -296,10 +319,12 @@ export default {
       patients: [],
       patientsLoading: false,
       doctorUsers: [],
+      pdfFiles: [],
       loading: true,
       isModalOpen: false,
       submitting: false,
       error: '',
+      selectedPayments: [],
       filters: {
         dateFrom: '',
         dateTo: ''
@@ -314,6 +339,24 @@ export default {
         status: 'pending'
       },
       columns: [
+        {
+          key: 'selected',
+          label: '',
+          sortable: false,
+          width: '50px',
+          render: (value, item) => {
+            return `
+              <div class="flex justify-center" onclick="event.stopPropagation()">
+                <input 
+                  type="checkbox" 
+                  data-payment-id="${item.id}"
+                  class="payment-checkbox w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  onchange="window.vm?.togglePaymentSelection(${item.id}, this.checked)"
+                />
+              </div>
+            `;
+          }
+        },
         {
           key: 'invoiceNumber',
           label: 'ინვოისი',
@@ -487,15 +530,19 @@ export default {
     this.fetchPayments();
     this.fetchPatients();
     this.fetchDoctors();
+    this.fetchPdfFiles();
     // Set default date to today
     const today = new Date().toISOString().split('T')[0];
     this.formData.payment_date = today;
     // Make print method available globally for table actions
     window.printPayment = (id) => this.printPayment(id);
+    // Expose component instance for checkbox handlers
+    window.vm = this;
   },
   beforeUnmount() {
     // Clean up global method
     delete window.printPayment;
+    delete window.vm;
   },
   methods: {
     async fetchPatients() {
@@ -532,6 +579,133 @@ export default {
         this.doctorUsers = [];
       }
     },
+    async fetchPdfFiles() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get('/api/pdf', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        this.pdfFiles = response.data || [];
+      } catch (error) {
+        console.error('Failed to fetch PDF files:', error);
+        this.pdfFiles = [];
+      }
+    },
+    normalizeString(str) {
+      if (!str) return '';
+      return str
+        .toLowerCase()
+        .replace(/\s+/g, '')
+        .replace(/[^\w\u10A0-\u10FF]/g, '')
+        .trim();
+    },
+    findMatchingPdfFile(serviceName) {
+      if (!serviceName || !this.pdfFiles || this.pdfFiles.length === 0) return null;
+      
+      // Extract meaningful words from service name (remove numbers, common words)
+      const serviceWords = this.extractWords(serviceName);
+      if (serviceWords.length === 0) return null;
+      
+      let bestMatch = null;
+      let bestMatchScore = 0;
+      
+      for (const file of this.pdfFiles) {
+        const fileNameWords = this.extractWords(file.basename);
+        if (fileNameWords.length === 0) continue;
+        
+        // Count matching words
+        let matchCount = 0;
+        for (const serviceWord of serviceWords) {
+          for (const fileNameWord of fileNameWords) {
+            if (serviceWord === fileNameWord || 
+                serviceWord.includes(fileNameWord) || 
+                fileNameWord.includes(serviceWord)) {
+              matchCount++;
+              break;
+            }
+          }
+        }
+        
+        // Calculate match score (percentage of matching words)
+        const matchScore = matchCount / Math.max(serviceWords.length, fileNameWords.length);
+        
+        // If at least 50% of words match, consider it a match
+        if (matchScore >= 0.5 && matchScore > bestMatchScore) {
+          bestMatch = file;
+          bestMatchScore = matchScore;
+        }
+      }
+      
+      return bestMatch;
+    },
+    extractWords(str) {
+      if (!str) return [];
+      
+      // Remove numbers, special characters, and split into words
+      const words = str
+        .toLowerCase()
+        .replace(/^[0-9\s-]+/g, '') // Remove leading numbers, dashes, and spaces
+        .replace(/[^\w\u10A0-\u10FF\s]/g, ' ') // Replace special chars with space
+        .split(/\s+/)
+        .filter(word => word.length > 2) // Filter out very short words
+        .filter(word => {
+          // Filter out only very common filler words, but keep meaningful medical terms
+          const commonWords = ['ახალი', 'ძველი'];
+          return !commonWords.includes(word);
+        });
+      
+      return words;
+    },
+    openPdfFile(file) {
+      if (!file) return;
+      
+      const url = `/pdf/${file.name}`;
+      const extension = file.extension?.toLowerCase() || file.name.split('.').pop()?.toLowerCase();
+      
+      if (extension === 'pdf') {
+        // For PDF files, open in iframe and trigger print dialog
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = url;
+        document.body.appendChild(iframe);
+        
+        iframe.onload = () => {
+          setTimeout(() => {
+            try {
+              iframe.contentWindow.print();
+            } catch (e) {
+              // If print fails, open in new window
+              const printWindow = window.open(url, '_blank');
+              if (printWindow) {
+                printWindow.onload = () => {
+                  setTimeout(() => {
+                    printWindow.print();
+                  }, 500);
+                };
+              }
+            }
+            // Remove iframe after printing
+            setTimeout(() => {
+              document.body.removeChild(iframe);
+            }, 1000);
+          }, 500);
+        };
+      } else if (extension === 'docx' || extension === 'doc') {
+        // For DOCX files, download the file
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Show info message
+        this.toastStore.info('DOCX ფაილი ჩამოიტვირთა. გთხოვთ გახსნათ და დაბეჭდოთ.');
+      } else {
+        // Fallback: open in new tab
+        window.open(url, '_blank');
+      }
+    },
     async fetchPayments() {
       this.loading = true;
       try {
@@ -559,89 +733,386 @@ export default {
         dateTo: ''
       };
     },
-    exportToExcel() {
-      // Export filtered payments to Excel
-      const dataToExport = this.filteredPayments.map(payment => {
-        const date = new Date(payment.date);
-        
-        // Format services with discounts
-        let servicesText = payment.service || '-';
-        if (payment.servicesDiscounts && Array.isArray(payment.servicesDiscounts) && payment.servicesDiscounts.length > 0) {
-          servicesText = payment.servicesDiscounts.map(service => {
-            const serviceName = service.name || '';
-            const servicePrice = parseFloat(service.price) || 0;
-            const discount = parseFloat(service.discount) || 0;
-            const discountedPrice = servicePrice * (1 - discount / 100);
-            
-            if (discount > 0) {
-              return `${serviceName}: ₾${servicePrice.toFixed(2)} → ₾${discountedPrice.toFixed(2)} (-${discount.toFixed(2)}%)`;
-            } else {
-              return `${serviceName}: ₾${servicePrice.toFixed(2)}`;
-            }
-          }).join(' | ');
-        }
-        
-        return {
-          'ინვოისი': payment.invoiceNumber,
-          'პაციენტი': payment.patientName,
-          'ექიმი': payment.doctor || '-',
-          'სერვისები': servicesText,
-          'თანხა': Number(payment.amount).toFixed(2),
-          'ფასდაკლება': payment.hasDiscount ? `${payment.discountPercentage?.toFixed(2) || 0}%` : '-',
-          'გადახდის მეთოდი': this.getPaymentMethodLabel(payment.paymentMethod),
-          'სტატუსი': this.getStatusLabel(payment.status),
-          'თარიღი': date.toLocaleDateString('ka-GE', { year: 'numeric', month: '2-digit', day: '2-digit' }),
-          'დრო': date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })
-        };
-      });
+    togglePaymentSelection(paymentId, isChecked) {
+      if (isChecked) {
+        const payment = this.allPayments.find(p => p.id === paymentId);
+        if (!payment) return;
 
-      // Create CSV content
-      if (dataToExport.length === 0) {
-        this.toastStore.warning('ექსპორტირებისთვის მონაცემები არ არის');
+        // Check if this is the first payment or if it's the same patient
+        if (this.selectedPayments.length === 0) {
+          this.selectedPayments.push(payment);
+        } else {
+          const firstPatientId = this.selectedPayments[0].patientId;
+          if (payment.patientId === firstPatientId) {
+            this.selectedPayments.push(payment);
+          } else {
+            // Uncheck the checkbox
+            const checkbox = document.querySelector(`input[data-payment-id="${paymentId}"]`);
+            if (checkbox) checkbox.checked = false;
+            this.toastStore.warning('შეგიძლიათ აირჩიოთ მხოლოდ ერთიდაიგივე პაციენტის გადახდები');
+            return;
+          }
+        }
+      } else {
+        this.selectedPayments = this.selectedPayments.filter(p => p.id !== paymentId);
+      }
+    },
+    clearSelection() {
+      this.selectedPayments = [];
+      // Uncheck all checkboxes
+      document.querySelectorAll('.payment-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+      });
+    },
+    printSelectedPayments() {
+      if (this.selectedPayments.length === 0) {
+        this.toastStore.warning('გთხოვთ აირჩიოთ გადახდები');
         return;
       }
 
-      // Get headers
-      const headers = Object.keys(dataToExport[0]);
+      // Verify all payments are for the same patient
+      const firstPatientId = this.selectedPayments[0].patientId;
+      const allSamePatient = this.selectedPayments.every(p => p.patientId === firstPatientId);
       
-      // Create CSV rows
-      const csvRows = [
-        headers.join(','),
-        ...dataToExport.map(row => 
-          headers.map(header => {
-            const value = row[header] || '';
-            // Escape commas and quotes
-            return `"${String(value).replace(/"/g, '""')}"`;
-          }).join(',')
-        )
-      ];
-
-      // Create CSV string
-      const csvContent = csvRows.join('\n');
-      
-      // Add BOM for UTF-8 Excel compatibility
-      const BOM = '\uFEFF';
-      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-      
-      // Create download link
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      
-      // Generate filename with date range
-      const now = new Date();
-      const dateStr = now.toISOString().split('T')[0];
-      let filename = `payments_${dateStr}.csv`;
-      
-      if (this.filters.dateFrom && this.filters.dateTo) {
-        filename = `payments_${this.filters.dateFrom}_${this.filters.dateTo}.csv`;
+      if (!allSamePatient) {
+        this.toastStore.warning('შეგიძლიათ დაბეჭდოთ მხოლოდ ერთიდაიგივე პაციენტის გადახდები');
+        return;
       }
+
+      this.printMultiplePayments(this.selectedPayments);
+    },
+    printMultiplePayments(payments) {
+      if (payments.length === 0) return;
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) return;
+
+      const firstPayment = payments[0];
+      let totalAmount = 0;
+      payments.forEach(p => totalAmount += parseFloat(p.amount) || 0);
+
+      let paymentsHtml = '';
+      payments.forEach((payment, index) => {
+        const paymentDate = new Date(payment.date);
+        const formattedDate = paymentDate.toLocaleDateString('ka-GE', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        paymentsHtml += `
+          <div style="page-break-after: ${index < payments.length - 1 ? 'always' : 'auto'}; margin-bottom: 40px;">
+            <div class="header">
+              <h1>გადახდის ინვოისი</h1>
+              <p style="margin-top: 10px; font-size: 18px; color: #666;">ინვოისი #${payment.invoiceNumber}</p>
+            </div>
+            
+            <div class="invoice-info">
+              <div class="info-section">
+                <h3>პაციენტი</h3>
+                <p style="font-weight: 600; margin-bottom: 5px;">${payment.patientName || '-'}</p>
+                ${payment.patientIdNumber ? `<p style="font-size: 14px; color: #666; margin: 3px 0;">პ/ნ: ${payment.patientIdNumber}</p>` : ''}
+                ${payment.patientDateOfBirth ? `<p style="font-size: 14px; color: #666; margin: 3px 0;">დაბადების თარიღი: ${new Date(payment.patientDateOfBirth).toLocaleDateString('ka-GE', { year: 'numeric', month: 'long', day: 'numeric' })}</p>` : ''}
+              </div>
+              <div class="info-section" style="text-align: right;">
+                <h3>გადახდის თარიღი</h3>
+                <p>${formattedDate}</p>
+              </div>
+            </div>
+
+            <div class="invoice-details">
+              <div class="detail-row">
+                <div class="detail-label">ექიმი:</div>
+                <div class="detail-value">${payment.doctor || '-'}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">სერვისები:</div>
+                <div class="detail-value">
+                  ${this.formatServicesForPrint(payment)}
+                </div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">გადახდის მეთოდი:</div>
+                <div class="detail-value">${this.getPaymentMethodLabel(payment.paymentMethod)}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">სტატუსი:</div>
+                <div class="detail-value">${this.getStatusLabel(payment.status)}</div>
+              </div>
+            </div>
+
+            <div class="amount-section">
+              <div class="amount-label">გადასახდელი თანხა</div>
+              <div class="amount-value">₾${Number(payment.amount).toFixed(2)}</div>
+            </div>
+
+            <div class="footer">
+              <p>დაბეჭდილია: ${new Date().toLocaleDateString('ka-GE', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</p>
+            </div>
+          </div>
+        `;
+      });
+
+      // Add summary page if multiple payments
+      let summaryHtml = '';
+      if (payments.length > 1) {
+        summaryHtml = `
+          <div style="page-break-before: always; padding-top: 40px;">
+            <div class="header">
+              <h1>გადახდების შეჯამება</h1>
+            </div>
+            
+            <div class="invoice-info">
+              <div class="info-section">
+                <h3>პაციენტი</h3>
+                <p style="font-weight: 600; margin-bottom: 5px;">${firstPayment.patientName || '-'}</p>
+                ${firstPayment.patientIdNumber ? `<p style="font-size: 14px; color: #666; margin: 3px 0;">პ/ნ: ${firstPayment.patientIdNumber}</p>` : ''}
+              </div>
+            </div>
+
+            <div class="invoice-details">
+              <div class="detail-row">
+                <div class="detail-label">სულ გადახდები:</div>
+                <div class="detail-value">${payments.length}</div>
+              </div>
+              ${payments.map((p, idx) => `
+                <div class="detail-row">
+                  <div class="detail-label">${idx + 1}. ინვოისი ${p.invoiceNumber}:</div>
+                  <div class="detail-value">₾${Number(p.amount).toFixed(2)}</div>
+                </div>
+              `).join('')}
+            </div>
+
+            <div class="amount-section">
+              <div class="amount-label">მთლიანი თანხა</div>
+              <div class="amount-value">₾${totalAmount.toFixed(2)}</div>
+            </div>
+
+            <div class="footer">
+              <p>დაბეჭდილია: ${new Date().toLocaleDateString('ka-GE', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</p>
+            </div>
+          </div>
+        `;
+      }
+
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>გადახდების ინვოისები - ${firstPayment.patientName}</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                padding: 40px;
+                color: #333;
+                max-width: 800px;
+                margin: 0 auto;
+              }
+              .header {
+                text-align: center;
+                margin-bottom: 40px;
+                border-bottom: 3px solid #333;
+                padding-bottom: 20px;
+              }
+              .header h1 {
+                margin: 0;
+                font-size: 28px;
+                font-weight: bold;
+              }
+              .invoice-info {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 30px;
+              }
+              .info-section {
+                flex: 1;
+              }
+              .info-section h3 {
+                margin: 0 0 10px 0;
+                font-size: 14px;
+                color: #666;
+                text-transform: uppercase;
+              }
+              .info-section p {
+                margin: 5px 0;
+                font-size: 16px;
+                font-weight: 500;
+              }
+              .invoice-details {
+                margin: 30px 0;
+                border: 2px solid #333;
+                border-radius: 8px;
+                overflow: hidden;
+              }
+              .detail-row {
+                display: flex;
+                border-bottom: 1px solid #ddd;
+                padding: 15px;
+              }
+              .detail-row:last-child {
+                border-bottom: none;
+              }
+              .detail-label {
+                font-weight: bold;
+                width: 200px;
+                color: #666;
+              }
+              .detail-value {
+                flex: 1;
+                font-size: 16px;
+              }
+              .amount-section {
+                background-color: #f5f5f5;
+                padding: 20px;
+                border-radius: 8px;
+                margin-top: 30px;
+                text-align: center;
+              }
+              .amount-label {
+                font-size: 18px;
+                color: #666;
+                margin-bottom: 10px;
+              }
+              .amount-value {
+                font-size: 36px;
+                font-weight: bold;
+                color: #22c55e;
+              }
+              .footer {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid #ddd;
+                text-align: center;
+                font-size: 12px;
+                color: #666;
+              }
+              @media print {
+                body {
+                  padding: 20px;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            ${paymentsHtml}
+            ${summaryHtml}
+          </body>
+        </html>
+      `;
       
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    },
+    exportToExcel() {
+      try {
+        // Export filtered payments to Excel
+        if (!this.filteredPayments || this.filteredPayments.length === 0) {
+          this.toastStore.warning('ექსპორტირებისთვის მონაცემები არ არის');
+          return;
+        }
+
+        const dataToExport = this.filteredPayments.map(payment => {
+          const date = new Date(payment.date);
+          
+          // Format services with discounts
+          let servicesText = payment.service || '-';
+          if (payment.servicesDiscounts && Array.isArray(payment.servicesDiscounts) && payment.servicesDiscounts.length > 0) {
+            servicesText = payment.servicesDiscounts.map(service => {
+              const serviceName = service.name || '';
+              const servicePrice = parseFloat(service.price) || 0;
+              const discount = parseFloat(service.discount) || 0;
+              const discountedPrice = servicePrice * (1 - discount / 100);
+              
+              if (discount > 0) {
+                return `${serviceName}: ₾${servicePrice.toFixed(2)} → ₾${discountedPrice.toFixed(2)} (-${discount.toFixed(2)}%)`;
+              } else {
+                return `${serviceName}: ₾${servicePrice.toFixed(2)}`;
+              }
+            }).join(' | ');
+          }
+          
+          return {
+            'ინვოისი': payment.invoiceNumber || '',
+            'პაციენტი': payment.patientName || '',
+            'ექიმი': payment.doctor || '-',
+            'სერვისები': servicesText,
+            'თანხა': Number(payment.amount || 0).toFixed(2),
+            'ფასდაკლება': payment.hasDiscount ? `${(payment.discountPercentage || 0).toFixed(2)}%` : '-',
+            'გადახდის მეთოდი': this.getPaymentMethodLabel(payment.paymentMethod),
+            'სტატუსი': this.getStatusLabel(payment.status),
+            'თარიღი': date.toLocaleDateString('ka-GE', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+            'დრო': date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })
+          };
+        });
+
+        // Get headers
+        const headers = Object.keys(dataToExport[0]);
+        
+        // Create CSV rows
+        const csvRows = [
+          headers.join(','),
+          ...dataToExport.map(row => 
+            headers.map(header => {
+              const value = row[header] || '';
+              // Escape commas and quotes
+              return `"${String(value).replace(/"/g, '""')}"`;
+            }).join(',')
+          )
+        ];
+
+        // Create CSV string
+        const csvContent = csvRows.join('\n');
+        
+        // Add BOM for UTF-8 Excel compatibility
+        const BOM = '\uFEFF';
+        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+        
+        // Create download link
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        
+        // Generate filename with date range
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        let filename = `payments_${dateStr}.csv`;
+        
+        if (this.filters.dateFrom && this.filters.dateTo) {
+          filename = `payments_${this.filters.dateFrom}_${this.filters.dateTo}.csv`;
+        }
+        
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up URL
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+        
+        this.toastStore.success('Excel ფაილი წარმატებით ჩამოიტვირთა');
+      } catch (error) {
+        console.error('Excel export error:', error);
+        this.toastStore.error('ექსპორტირებისას მოხდა შეცდომა');
+      }
     },
     getPaymentMethodLabel(method) {
       const methods = {
@@ -753,6 +1224,29 @@ export default {
         this.toastStore.warning('გადახდა არ მოიძებნა');
         return;
       }
+
+      // Check for matching PDF files for services
+      const servicesToCheck = [];
+      if (payment.servicesDiscounts && Array.isArray(payment.servicesDiscounts) && payment.servicesDiscounts.length > 0) {
+        payment.servicesDiscounts.forEach(service => {
+          if (service.name) {
+            servicesToCheck.push(service.name);
+          }
+        });
+      } else if (payment.service) {
+        const services = Array.isArray(payment.service) ? payment.service : [payment.service];
+        servicesToCheck.push(...services);
+      }
+
+      // Open matching PDF files
+      const openedFiles = [];
+      servicesToCheck.forEach(serviceName => {
+        const matchingFile = this.findMatchingPdfFile(serviceName);
+        if (matchingFile && !openedFiles.find(f => f.name === matchingFile.name)) {
+          this.openPdfFile(matchingFile);
+          openedFiles.push(matchingFile);
+        }
+      });
 
       const printWindow = window.open('', '_blank');
       if (!printWindow) return;

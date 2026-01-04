@@ -37,7 +37,7 @@
             <th
               v-for="column in columns"
               :key="column.key"
-              class="px-6 py-3 text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider"
+              class="px-4 py-3 text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider"
               :style="{ width: column.width }"
             >
               <button
@@ -56,7 +56,7 @@
           </tr>
           <!-- Column Filters Row -->
           <tr v-if="hasFilterableColumns" class="bg-gray-50 dark:bg-gray-800">
-            <th v-for="column in columns" :key="`filter-${column.key}`" class="px-6 py-2">
+            <th v-for="column in columns" :key="`filter-${column.key}`" class="px-4 py-2">
               <input
                 v-if="column.filterable"
                 type="text"
@@ -98,7 +98,7 @@
             <td
               v-for="column in columns"
               :key="column.key"
-              class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap"
+              class="px-4 py-4 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap"
             >
               <component
                 :is="column.render ? 'span' : 'span'"

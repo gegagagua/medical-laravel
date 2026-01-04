@@ -207,6 +207,7 @@ export default {
       selectedPatient: null,
       doctorUsers: [],
       services: [],
+      pdfFiles: [],
       paymentFormData: {
         service: '',
         services: [],
@@ -343,13 +344,35 @@ export default {
           key: 'actions',
           label: 'მოქმედებები',
           sortable: false,
-          width: '120px',
+          width: '160px',
           render: (value, item) => {
-            const isAdmin = window.vm && window.vm.authStore?.userRole === 'ADMIN';
-            if (!isAdmin) return '<span class="text-sm text-gray-400">-</span>';
+            const userRole = window.vm && window.vm.authStore?.userRole;
+            const isAdmin = userRole === 'ADMIN';
+            const isDoctor = userRole === 'DOCTOR' || userRole === 'LABOR';
             
-            return `
-              <div class="flex justify-center" onclick="event.stopPropagation()">
+            if (!isAdmin && !isDoctor) return '<span class="text-sm text-gray-400">-</span>';
+            
+            let buttons = '';
+            
+            // Print button for doctors
+            if (isDoctor) {
+              buttons += `
+                <button 
+                  onclick="window.printVisit(${item.id}); return false;"
+                  class="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition cursor-pointer flex items-center gap-1"
+                  title="დაბეჭდვა"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  დაბეჭდვა
+                </button>
+              `;
+            }
+            
+            // Payment button for admins
+            if (isAdmin) {
+              buttons += `
                 <button 
                   onclick="window.vm?.openPaymentModal(${item.id})"
                   class="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg transition cursor-pointer flex items-center gap-1"
@@ -360,6 +383,12 @@ export default {
                   </svg>
                   გადახდა
                 </button>
+              `;
+            }
+            
+            return `
+              <div class="flex justify-center gap-2" onclick="event.stopPropagation()">
+                ${buttons}
               </div>
             `;
           }
@@ -456,6 +485,7 @@ export default {
     this.authStore.loadFromStorage();
     this.fetchAppointments();
     this.fetchPatients();
+    this.fetchPdfFiles();
     
     // Fetch doctors and services for payment modal
     if (this.authStore.userRole === 'ADMIN') {
@@ -465,6 +495,8 @@ export default {
     
     // Expose component instance to window for dropdown handlers
     window.vm = this;
+    // Make print method available globally for table actions
+    window.printVisit = (id) => this.printVisit(id);
     
     // Add event delegation for status dropdown changes
     this.$nextTick(() => {
@@ -574,6 +606,133 @@ export default {
       } catch (error) {
         console.error('Failed to fetch services:', error);
         this.services = [];
+      }
+    },
+    async fetchPdfFiles() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get('/api/pdf', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        this.pdfFiles = response.data || [];
+      } catch (error) {
+        console.error('Failed to fetch PDF files:', error);
+        this.pdfFiles = [];
+      }
+    },
+    normalizeString(str) {
+      if (!str) return '';
+      return str
+        .toLowerCase()
+        .replace(/\s+/g, '')
+        .replace(/[^\w\u10A0-\u10FF]/g, '')
+        .trim();
+    },
+    findMatchingPdfFile(serviceName) {
+      if (!serviceName || !this.pdfFiles || this.pdfFiles.length === 0) return null;
+      
+      // Extract meaningful words from service name (remove numbers, common words)
+      const serviceWords = this.extractWords(serviceName);
+      if (serviceWords.length === 0) return null;
+      
+      let bestMatch = null;
+      let bestMatchScore = 0;
+      
+      for (const file of this.pdfFiles) {
+        const fileNameWords = this.extractWords(file.basename);
+        if (fileNameWords.length === 0) continue;
+        
+        // Count matching words
+        let matchCount = 0;
+        for (const serviceWord of serviceWords) {
+          for (const fileNameWord of fileNameWords) {
+            if (serviceWord === fileNameWord || 
+                serviceWord.includes(fileNameWord) || 
+                fileNameWord.includes(serviceWord)) {
+              matchCount++;
+              break;
+            }
+          }
+        }
+        
+        // Calculate match score (percentage of matching words)
+        const matchScore = matchCount / Math.max(serviceWords.length, fileNameWords.length);
+        
+        // If at least 50% of words match, consider it a match
+        if (matchScore >= 0.5 && matchScore > bestMatchScore) {
+          bestMatch = file;
+          bestMatchScore = matchScore;
+        }
+      }
+      
+      return bestMatch;
+    },
+    extractWords(str) {
+      if (!str) return [];
+      
+      // Remove numbers, special characters, and split into words
+      const words = str
+        .toLowerCase()
+        .replace(/^[0-9\s-]+/g, '') // Remove leading numbers, dashes, and spaces
+        .replace(/[^\w\u10A0-\u10FF\s]/g, ' ') // Replace special chars with space
+        .split(/\s+/)
+        .filter(word => word.length > 2) // Filter out very short words
+        .filter(word => {
+          // Filter out only very common filler words, but keep meaningful medical terms
+          const commonWords = ['ახალი', 'ძველი'];
+          return !commonWords.includes(word);
+        });
+      
+      return words;
+    },
+    openPdfFile(file) {
+      if (!file) return;
+      
+      const url = `/pdf/${file.name}`;
+      const extension = file.extension?.toLowerCase() || file.name.split('.').pop()?.toLowerCase();
+      
+      if (extension === 'pdf') {
+        // For PDF files, open in iframe and trigger print dialog
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = url;
+        document.body.appendChild(iframe);
+        
+        iframe.onload = () => {
+          setTimeout(() => {
+            try {
+              iframe.contentWindow.print();
+            } catch (e) {
+              // If print fails, open in new window
+              const printWindow = window.open(url, '_blank');
+              if (printWindow) {
+                printWindow.onload = () => {
+                  setTimeout(() => {
+                    printWindow.print();
+                  }, 500);
+                };
+              }
+            }
+            // Remove iframe after printing
+            setTimeout(() => {
+              document.body.removeChild(iframe);
+            }, 1000);
+          }, 500);
+        };
+      } else if (extension === 'docx' || extension === 'doc') {
+        // For DOCX files, download the file
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Show info message
+        this.toastStore.info('DOCX ფაილი ჩამოიტვირთა. გთხოვთ გახსნათ და დაბეჭდოთ.');
+      } else {
+        // Fallback: open in new tab
+        window.open(url, '_blank');
       }
     },
     async openPaymentModal(visitId) {
@@ -731,7 +890,281 @@ export default {
         const errorMessage = error.response?.data?.message || error.response?.data?.error || 'შეცდომა მოხდა გადახდის შექმნისას';
         this.toastStore.showToast(errorMessage, 'error');
       }
+    },
+    printVisit(visitId) {
+      const visit = this.allAppointments.find(v => v.id === visitId);
+      if (!visit) {
+        this.toastStore.warning('ვიზიტი არ მოიძებნა');
+        return;
+      }
+
+      // Check for matching PDF/DOCX files for services
+      const services = Array.isArray(visit.service) ? visit.service : (visit.service ? [visit.service] : []);
+      const openedFiles = [];
+      
+      if (services.length === 0) {
+        this.toastStore.warning('ვიზიტზე სერვისები არ არის მითითებული');
+        return;
+      }
+
+      services.forEach(serviceName => {
+        const matchingFile = this.findMatchingPdfFile(serviceName);
+        if (matchingFile && !openedFiles.find(f => f.name === matchingFile.name)) {
+          this.openPdfFile(matchingFile);
+          openedFiles.push(matchingFile);
+        }
+      });
+
+      if (openedFiles.length === 0) {
+        this.toastStore.warning('სერვისების შესაბამისი PDF/DOCX ფაილები არ მოიძებნა');
+        return;
+      }
+
+      // Don't print HTML page, only PDF/DOCX files
+      return;
+
+      const visitDate = new Date(visit.date);
+      const formattedDate = visitDate.toLocaleDateString('ka-GE', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric'
+      });
+      const formattedTime = visit.time || visitDate.toLocaleTimeString('ka-GE', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+
+      const getStatusLabel = (status) => {
+        const statuses = {
+          'PENDING': 'მოლოდინში',
+          'CONFIRMED': 'დადასტურებული',
+          'CANCELLED': 'გაუქმებული',
+          'COMPLETED': 'დასრულებული',
+          pending: 'მოლოდინში',
+          confirmed: 'დადასტურებული',
+          cancelled: 'გაუქმებული',
+          completed: 'დასრულებული'
+        };
+        return statuses[status] || status;
+      };
+
+      const servicesHtml = services.length > 0 
+        ? services.map(s => `<div class="service-item">${s}</div>`).join('')
+        : '<div class="service-item">-</div>';
+
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>ვიზიტის ინფორმაცია - ${visit.id}</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                padding: 40px;
+                color: #333;
+                max-width: 800px;
+                margin: 0 auto;
+              }
+              .header {
+                text-align: center;
+                margin-bottom: 40px;
+                border-bottom: 3px solid #333;
+                padding-bottom: 20px;
+              }
+              .header h1 {
+                margin: 0;
+                font-size: 28px;
+                font-weight: bold;
+              }
+              .visit-info {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 30px;
+              }
+              .info-section {
+                flex: 1;
+              }
+              .info-section h3 {
+                margin: 0 0 10px 0;
+                font-size: 14px;
+                color: #666;
+                text-transform: uppercase;
+              }
+              .info-section p {
+                margin: 5px 0;
+                font-size: 16px;
+                font-weight: 500;
+              }
+              .visit-details {
+                background-color: #f9f9f9;
+                padding: 20px;
+                border-radius: 8px;
+                margin-bottom: 30px;
+              }
+              .detail-row {
+                display: flex;
+                margin-bottom: 15px;
+                padding-bottom: 15px;
+                border-bottom: 1px solid #ddd;
+              }
+              .detail-row:last-child {
+                border-bottom: none;
+                margin-bottom: 0;
+                padding-bottom: 0;
+              }
+              .detail-label {
+                font-weight: bold;
+                width: 150px;
+                color: #666;
+              }
+              .detail-value {
+                flex: 1;
+                color: #333;
+              }
+              .service-item {
+                padding: 8px 0;
+                border-bottom: 1px solid #eee;
+              }
+              .service-item:last-child {
+                border-bottom: none;
+              }
+              .status-badge {
+                display: inline-block;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 14px;
+              }
+              .status-pending {
+                background-color: #fef3c7;
+                color: #92400e;
+              }
+              .status-confirmed {
+                background-color: #dbeafe;
+                color: #1e40af;
+              }
+              .status-cancelled {
+                background-color: #fee2e2;
+                color: #991b1b;
+              }
+              .status-completed {
+                background-color: #d1fae5;
+                color: #065f46;
+              }
+              .footer {
+                text-align: center;
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid #ddd;
+                color: #666;
+                font-size: 12px;
+              }
+              @media print {
+                body {
+                  padding: 20px;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>ვიზიტის ინფორმაცია</h1>
+            </div>
+
+            <div class="visit-info">
+              <div class="info-section">
+                <h3>ვიზიტის ID</h3>
+                <p>#${visit.id}</p>
+              </div>
+              <div class="info-section">
+                <h3>სტატუსი</h3>
+                <p>
+                  <span class="status-badge status-${(visit.status || 'pending').toLowerCase()}">
+                    ${getStatusLabel(visit.status)}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <div class="visit-details">
+              <div class="detail-row">
+                <div class="detail-label">პაციენტი:</div>
+                <div class="detail-value">
+                  ${visit.patientName || '-'}
+                  ${visit.patientIdNumber ? `<br><small style="color: #666;">პ/ნ: ${visit.patientIdNumber}</small>` : ''}
+                </div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">ექიმი:</div>
+                <div class="detail-value">${visit.doctorName || '-'}</div>
+              </div>
+              ${visit.department ? `
+              <div class="detail-row">
+                <div class="detail-label">განყოფილება:</div>
+                <div class="detail-value">${visit.department}</div>
+              </div>
+              ` : ''}
+              <div class="detail-row">
+                <div class="detail-label">თარიღი:</div>
+                <div class="detail-value">${formattedDate}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">დრო:</div>
+                <div class="detail-value">${formattedTime}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">სერვისები:</div>
+                <div class="detail-value">
+                  ${servicesHtml}
+                </div>
+              </div>
+              ${visit.notes ? `
+              <div class="detail-row">
+                <div class="detail-label">შენიშვნა:</div>
+                <div class="detail-value">${visit.notes}</div>
+              </div>
+              ` : ''}
+              ${visit.status_changed_at ? `
+              <div class="detail-row">
+                <div class="detail-label">სტატუსის შეცვლა:</div>
+                <div class="detail-value">
+                  ${new Date(visit.status_changed_at).toLocaleDateString('ka-GE', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              </div>
+              ` : ''}
+            </div>
+
+            <div class="footer">
+              <p>დაბეჭდილია: ${new Date().toLocaleDateString('ka-GE', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</p>
+            </div>
+          </body>
+        </html>
+      `;
+      
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
     }
+  },
+  beforeUnmount() {
+    // Clean up global method
+    delete window.printVisit;
+    delete window.vm;
   }
 };
 </script>
