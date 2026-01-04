@@ -10,7 +10,7 @@ class PaymentController extends Controller
 {
     public function index()
     {
-        $payments = Payment::with('patient:id,first_name,last_name')
+        $payments = Payment::with('patient:id,first_name,last_name,id_number,date_of_birth')
             ->orderBy('payment_date', 'desc')
             ->orderBy('created_at', 'desc')
             ->get()
@@ -21,6 +21,8 @@ class PaymentController extends Controller
                     'patientId' => $payment->patient_id,
                     'appointmentId' => $payment->appointment_id,
                     'patientName' => $payment->patient->first_name . ' ' . $payment->patient->last_name,
+                    'patientIdNumber' => $payment->patient->id_number ?? null,
+                    'patientDateOfBirth' => $payment->patient->date_of_birth?->toISOString(),
                     'service' => $payment->service,
                     'doctor' => $payment->doctor,
                     'userId' => $payment->user_id,
@@ -106,7 +108,7 @@ class PaymentController extends Controller
             'status' => $validated['status'] ?? 'pending',
         ]);
 
-        $payment->load('patient:id,first_name,last_name');
+        $payment->load('patient:id,first_name,last_name,id_number,date_of_birth');
 
         return response()->json([
             'id' => $payment->id,
@@ -114,6 +116,8 @@ class PaymentController extends Controller
             'patientId' => $payment->patient_id,
             'appointmentId' => $payment->appointment_id,
             'patientName' => $payment->patient->first_name . ' ' . $payment->patient->last_name,
+            'patientIdNumber' => $payment->patient->id_number ?? null,
+            'patientDateOfBirth' => $payment->patient->date_of_birth?->toISOString(),
             'service' => $payment->service,
             'doctor' => $payment->doctor,
             'amount' => $payment->amount,
@@ -133,7 +137,7 @@ class PaymentController extends Controller
         $user = $request->user();
         $doctorName = $user->first_name . ' ' . $user->last_name;
 
-        $payments = Payment::with('patient:id,first_name,last_name')
+        $payments = Payment::with('patient:id,first_name,last_name,id_number,date_of_birth')
             ->where('doctor', $doctorName)
             ->orderBy('payment_date', 'desc')
             ->orderBy('created_at', 'desc')
@@ -143,6 +147,8 @@ class PaymentController extends Controller
                     'id' => $payment->id,
                     'invoiceNumber' => $payment->invoice_number,
                     'patientName' => $payment->patient->first_name . ' ' . $payment->patient->last_name,
+                    'patientIdNumber' => $payment->patient->id_number ?? null,
+                    'patientDateOfBirth' => $payment->patient->date_of_birth?->toISOString(),
                     'service' => $payment->service,
                     'doctor' => $payment->doctor,
                     'amount' => $payment->amount,

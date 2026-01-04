@@ -163,8 +163,8 @@
                </form>
              </Modal>
 
-             <!-- Add Patient Modal -->
-             <Modal :isOpen="isModalOpen" title="ახალი პაციენტის დამატება" @close="closeModal">
+             <!-- Add/Edit Patient Modal -->
+             <Modal :isOpen="isModalOpen" :title="editingPatientId ? 'პაციენტის რედაქტირება' : 'ახალი პაციენტის დამატება'" @close="closeModal">
         <form @submit.prevent="handleSubmit" class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <Input
@@ -190,10 +190,9 @@
           
           <div class="grid grid-cols-2 gap-4">
             <Input
-              v-model="formData.age"
-              label="ასაკი"
-              type="number"
-              placeholder="18"
+              v-model="formData.date_of_birth"
+              label="დაბადების თარიღი"
+              type="date"
               required
             />
             <div>
@@ -241,7 +240,7 @@
               გაუქმება
             </Button>
             <Button type="submit" variant="primary" :full-width="true" :disabled="loading">
-              {{ loading ? 'იტვირთება...' : 'დამატება' }}
+              {{ loading ? 'იტვირთება...' : (editingPatientId ? 'განახლება' : 'დამატება') }}
             </Button>
           </div>
         </form>
@@ -278,12 +277,13 @@ export default {
         loading: true,
         isModalOpen: false,
         isVisitModalOpen: false,
+        editingPatientId: null,
         error: '',
         formData: {
           first_name: '',
           last_name: '',
           id_number: '',
-          age: '',
+          date_of_birth: '',
           gender: 'male',
           phone: '',
           diagnosis: '',
@@ -364,14 +364,26 @@ export default {
         },
         {
           key: 'actions',
-          label: 'მოქმედება',
-          width: '120px',
+          label: 'მოქმედებები',
+          width: '200px',
           render: (_, row) => `
-            <button 
-              onclick="window.patientsComponent?.openVisitModal(${row.id})"
-              class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium transition">
-              ახალი ვიზიტი
-            </button>
+            <div class="flex gap-2" onclick="event.stopPropagation()">
+              <button 
+                onclick="window.patientsComponent?.openVisitModal(${row.id})"
+                class="px-2 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium transition">
+                ვიზიტი
+              </button>
+              <button 
+                onclick="window.patientsComponent?.openEditModal(${row.id})"
+                class="px-2 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium transition">
+                რედაქტირება
+              </button>
+              <button 
+                onclick="window.patientsComponent?.handleDelete(${row.id})"
+                class="px-2 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-medium transition">
+                წაშლა
+              </button>
+            </div>
           `
         }
       ]
@@ -410,20 +422,48 @@ export default {
       }
     },
     openModal() {
+      this.editingPatientId = null;
       this.isModalOpen = true;
       this.error = '';
       this.formData = {
         first_name: '',
         last_name: '',
         id_number: '',
-        age: '',
+        date_of_birth: '',
         gender: 'male',
         phone: '',
         diagnosis: '',
         status: 'active'
       };
     },
+    async openEditModal(patientId) {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get(`/api/patients/${patientId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        const patient = response.data;
+        this.editingPatientId = patientId;
+        this.isModalOpen = true;
+        this.error = '';
+        this.formData = {
+          first_name: patient.first_name,
+          last_name: patient.last_name,
+          id_number: patient.id_number,
+          date_of_birth: patient.date_of_birth ? patient.date_of_birth.split('T')[0] : '',
+          gender: patient.gender,
+          phone: patient.phone || '',
+          diagnosis: patient.diagnosis || '',
+          status: patient.status
+        };
+      } catch (error) {
+        console.error('Failed to fetch patient:', error);
+        this.toastStore.error('პაციენტის ჩატვირთვა ვერ მოხერხდა');
+      }
+    },
     closeModal() {
+      this.editingPatientId = null;
       this.isModalOpen = false;
       this.error = '';
     },
@@ -434,19 +474,50 @@ export default {
       try {
         const token = localStorage.getItem('auth_token');
         
-        await axios.post('/api/patients', this.formData, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        if (this.editingPatientId) {
+          // Update existing patient
+          await axios.put(`/api/patients/${this.editingPatientId}`, this.formData, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          this.toastStore.success('პაციენტი წარმატებით განახლდა');
+        } else {
+          // Create new patient
+          await axios.post('/api/patients', this.formData, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          this.toastStore.success('პაციენტი წარმატებით დაემატა');
+        }
 
         await this.fetchPatients();
-        // reset to top and close modal
         this.error = '';
         this.isModalOpen = false;
         this.closeModal();
       } catch (error) {
-        this.error = error.response?.data?.message || 'შეცდომა მოხდა პაციენტის დამატებისას';
+        const errorMessage = error.response?.data?.message || 
+          (this.editingPatientId ? 'შეცდომა მოხდა პაციენტის განახლებისას' : 'შეცდომა მოხდა პაციენტის დამატებისას');
+        this.error = errorMessage;
+        this.toastStore.error(errorMessage);
       } finally {
         this.loading = false;
+      }
+    },
+    async handleDelete(patientId) {
+      if (!confirm('დარწმუნებული ხართ, რომ გსურთ პაციენტის წაშლა?')) {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('auth_token');
+        await axios.delete(`/api/patients/${patientId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        await this.fetchPatients();
+        this.toastStore.success('პაციენტი წარმატებით წაიშალა');
+      } catch (error) {
+        console.error('Failed to delete patient:', error);
+        const errorMessage = error.response?.data?.message || 'შეცდომა მოხდა პაციენტის წაშლისას';
+        this.toastStore.error(errorMessage);
       }
     },
     handleImport() {

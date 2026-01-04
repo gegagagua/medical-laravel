@@ -38,6 +38,9 @@ Route::prefix('patients')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [PatientController::class, 'index']);
     Route::get('/{id}', [PatientController::class, 'show']);
     Route::post('/', [PatientController::class, 'store']);
+    Route::put('/{id}', [PatientController::class, 'update']);
+    Route::patch('/{id}', [PatientController::class, 'update']);
+    Route::delete('/{id}', [PatientController::class, 'destroy']);
 });
 
 // Users

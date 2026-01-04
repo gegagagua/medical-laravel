@@ -142,15 +142,15 @@
           </Button>
         </div>
 
-        <Table
-          :data="filteredPayments"
-          :columns="columns"
-          :page-size="10"
-          :searchable="true"
-          search-placeholder="მოძებნეთ გადახდა (ინვოისი, პაციენტი, სერვისი)..."
-          empty-message="გადახდები არ მოიძებნა"
-          :loading="loading"
-        />
+          <Table
+            :data="filteredPayments"
+            :columns="columns"
+            :page-size="10"
+            :searchable="true"
+            search-placeholder="მოძებნეთ გადახდა (ინვოისი, პაციენტი, სერვისი)..."
+            empty-message="გადახდები არ მოიძებნა"
+            :loading="loading"
+          />
       </div>
 
       <!-- Add Payment Modal -->
@@ -873,10 +873,12 @@ export default {
             <div class="invoice-info">
               <div class="info-section">
                 <h3>პაციენტი</h3>
-                <p>${payment.patientName || '-'}</p>
+                <p style="font-weight: 600; margin-bottom: 5px;">${payment.patientName || '-'}</p>
+                ${payment.patientIdNumber ? `<p style="font-size: 14px; color: #666; margin: 3px 0;">პ/ნ: ${payment.patientIdNumber}</p>` : ''}
+                ${payment.patientDateOfBirth ? `<p style="font-size: 14px; color: #666; margin: 3px 0;">დაბადების თარიღი: ${new Date(payment.patientDateOfBirth).toLocaleDateString('ka-GE', { year: 'numeric', month: 'long', day: 'numeric' })}</p>` : ''}
               </div>
               <div class="info-section" style="text-align: right;">
-                <h3>თარიღი</h3>
+                <h3>გადახდის თარიღი</h3>
                 <p>${formattedDate}</p>
               </div>
             </div>
