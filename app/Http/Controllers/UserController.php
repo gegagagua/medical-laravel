@@ -93,4 +93,49 @@ class UserController extends Controller
             'message' => 'User created successfully',
         ], 201);
     }
+
+    public function update(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $rules = [
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $id,
+            'phone' => 'nullable|string|max:255',
+            'role' => 'required|in:PATIENT,DOCTOR,ADMIN,LABOR',
+        ];
+
+        // Add doctor_role validation if role is LABOR
+        if ($request->role === 'LABOR') {
+            $rules['doctor_role'] = 'required|string|max:255';
+        } else {
+            $rules['doctor_role'] = 'nullable|string|max:255';
+        }
+
+        $validated = $request->validate($rules);
+
+        $user->update($validated);
+
+        return response()->json([
+            'user' => $user,
+            'message' => 'User updated successfully',
+        ]);
+    }
+
+    public function changePassword(Request $request, $id)
+    {
+        $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = User::findOrFail($id);
+        $user->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return response()->json([
+            'message' => 'Password changed successfully',
+        ]);
+    }
 }

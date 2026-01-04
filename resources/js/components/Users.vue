@@ -90,14 +90,16 @@
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   რეგისტრაცია
                 </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  მოქმედებები
+                </th>
               </tr>
             </thead>
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               <tr
                 v-for="user in paginatedUsers"
                 :key="user.id"
-                @click="handleRowClick(user)"
-                class="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                   {{ user.id }}
@@ -126,6 +128,22 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                   {{ formatDate(user.created_at) }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm" @click.stop>
+                  <div class="flex gap-2">
+                    <button
+                      @click="openEditModal(user)"
+                      class="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium transition"
+                    >
+                      რედაქტირება
+                    </button>
+                    <button
+                      @click="openPasswordModal(user)"
+                      class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium transition"
+                    >
+                      პაროლი
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -182,8 +200,8 @@
         </div>
       </div>
 
-      <!-- Add User Modal -->
-      <Modal :isOpen="isModalOpen" title="ახალი მომხმარებლის დამატება" @close="closeModal">
+      <!-- Add/Edit User Modal -->
+      <Modal :isOpen="isModalOpen" :title="editingUserId ? 'მომხმარებლის რედაქტირება' : 'ახალი მომხმარებლის დამატება'" @close="closeModal">
         <form @submit.prevent="handleSubmit" class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <Input
@@ -253,6 +271,7 @@
           </div>
 
           <PasswordInput
+            v-if="!editingUserId"
             v-model="formData.password"
             label="პაროლი"
             placeholder="მინიმუმ 8 სიმბოლო"
@@ -268,7 +287,45 @@
               გაუქმება
             </Button>
             <Button type="submit" variant="primary" :full-width="true" :disabled="loading">
-              {{ loading ? 'იტვირთება...' : 'დამატება' }}
+              {{ loading ? 'იტვირთება...' : (editingUserId ? 'განახლება' : 'დამატება') }}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <!-- Change Password Modal -->
+      <Modal :isOpen="isPasswordModalOpen" title="პაროლის შეცვლა" @close="closePasswordModal">
+        <form @submit.prevent="handlePasswordChange" class="space-y-4">
+          <div v-if="passwordFormData.userName" class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
+              მომხმარებელი: {{ passwordFormData.userName }}
+            </p>
+          </div>
+
+          <PasswordInput
+            v-model="passwordFormData.password"
+            label="ახალი პაროლი"
+            placeholder="მინიმუმ 8 სიმბოლო"
+            required
+          />
+
+          <PasswordInput
+            v-model="passwordFormData.password_confirmation"
+            label="დაადასტურეთ პაროლი"
+            placeholder="გაიმეორეთ პაროლი"
+            required
+          />
+
+          <div v-if="passwordError" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p class="text-sm text-red-800 dark:text-red-300">{{ passwordError }}</p>
+          </div>
+
+          <div class="flex gap-3 pt-4">
+            <Button type="button" variant="secondary" @click="closePasswordModal" :full-width="true">
+              გაუქმება
+            </Button>
+            <Button type="submit" variant="primary" :full-width="true" :disabled="passwordLoading">
+              {{ passwordLoading ? 'იტვირთება...' : 'პაროლის შეცვლა' }}
             </Button>
           </div>
         </form>
@@ -279,6 +336,7 @@
 
 <script>
 import axios from 'axios';
+import { useToastStore } from '../stores/toast';
 import Navbar from './Navbar.vue';
 import Button from './ui/Button.vue';
 import Modal from './ui/Modal.vue';
@@ -294,6 +352,10 @@ export default {
     Input,
     PasswordInput
   },
+  setup() {
+    const toastStore = useToastStore();
+    return { toastStore };
+  },
   data() {
     return {
       users: [],
@@ -302,7 +364,11 @@ export default {
       currentPage: 1,
       pageSize: 10,
       isModalOpen: false,
+      isPasswordModalOpen: false,
+      editingUserId: null,
       error: '',
+      passwordError: '',
+      passwordLoading: false,
       formData: {
         first_name: '',
         last_name: '',
@@ -311,6 +377,12 @@ export default {
         role: 'ADMIN',
         doctor_role: '',
         password: ''
+      },
+      passwordFormData: {
+        userId: null,
+        userName: '',
+        password: '',
+        password_confirmation: ''
       }
     };
   },
@@ -404,6 +476,7 @@ export default {
       }
     },
     openModal() {
+      this.editingUserId = null;
       this.isModalOpen = true;
       this.error = '';
       this.formData = {
@@ -416,7 +489,53 @@ export default {
         password: ''
       };
     },
+    async openEditModal(user) {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get(`/api/users/${user.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        const userData = response.data;
+        this.editingUserId = user.id;
+        this.isModalOpen = true;
+        this.error = '';
+        this.formData = {
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+          email: userData.email,
+          phone: userData.phone || '',
+          role: userData.role,
+          doctor_role: userData.doctor_role || '',
+          password: ''
+        };
+      } catch (error) {
+        console.error('Failed to fetch user:', error);
+        this.toastStore.error('მომხმარებლის ჩატვირთვა ვერ მოხერხდა');
+      }
+    },
+    openPasswordModal(user) {
+      this.isPasswordModalOpen = true;
+      this.passwordError = '';
+      this.passwordFormData = {
+        userId: user.id,
+        userName: `${user.first_name} ${user.last_name}`,
+        password: '',
+        password_confirmation: ''
+      };
+    },
+    closePasswordModal() {
+      this.isPasswordModalOpen = false;
+      this.passwordError = '';
+      this.passwordFormData = {
+        userId: null,
+        userName: '',
+        password: '',
+        password_confirmation: ''
+      };
+    },
     closeModal() {
+      this.editingUserId = null;
       this.isModalOpen = false;
       this.error = '';
     },
@@ -426,11 +545,18 @@ export default {
 
       try {
         const token = localStorage.getItem('auth_token');
-        await axios.post('/api/users', this.formData, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        
+        if (this.editingUserId) {
+          // Update existing user
+          await axios.put(`/api/users/${this.editingUserId}`, this.formData, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+        } else {
+          // Create new user
+          await axios.post('/api/users', this.formData, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+        }
 
         // Refresh users list
         await this.fetchUsers();
@@ -440,10 +566,43 @@ export default {
         
         // Close modal
         this.closeModal();
+        this.toastStore.success(this.editingUserId ? 'მომხმარებელი წარმატებით განახლდა' : 'მომხმარებელი წარმატებით დაემატა');
       } catch (error) {
-        this.error = error.response?.data?.message || 'შეცდომა მოხდა მომხმარებლის დამატებისას';
+        const errorMessage = error.response?.data?.message || 
+          (this.editingUserId ? 'შეცდომა მოხდა მომხმარებლის განახლებისას' : 'შეცდომა მოხდა მომხმარებლის დამატებისას');
+        this.error = errorMessage;
+        this.toastStore.error(errorMessage);
       } finally {
         this.loading = false;
+      }
+    },
+    async handlePasswordChange() {
+      this.passwordLoading = true;
+      this.passwordError = '';
+
+      try {
+        if (this.passwordFormData.password !== this.passwordFormData.password_confirmation) {
+          this.passwordError = 'პაროლები არ ემთხვევა';
+          this.passwordLoading = false;
+          return;
+        }
+
+        const token = localStorage.getItem('auth_token');
+        await axios.patch(`/api/users/${this.passwordFormData.userId}/password`, {
+          password: this.passwordFormData.password,
+          password_confirmation: this.passwordFormData.password_confirmation
+        }, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        // Close modal
+        this.closePasswordModal();
+        this.toastStore.success('პაროლი წარმატებით შეიცვალა');
+      } catch (error) {
+        this.passwordError = error.response?.data?.message || 'შეცდომა მოხდა პაროლის შეცვლისას';
+        this.toastStore.error(this.passwordError);
+      } finally {
+        this.passwordLoading = false;
       }
     }
   }

@@ -319,23 +319,26 @@ export default {
           label: 'ინვოისი',
           sortable: true,
           filterable: true,
-          width: '150px',
-          render: (value) => `<span class="font-mono font-semibold text-blue-600 dark:text-blue-400">${value}</span>`
+          width: '130px',
+          render: (value) => `<span class="font-mono font-semibold text-blue-600 dark:text-blue-400 text-sm">${value}</span>`
         },
         {
           key: 'patientName',
           label: 'პაციენტი',
           sortable: true,
           filterable: true,
-          width: '200px',
-          render: (value) => `<span class="font-medium text-gray-900 dark:text-white">${value}</span>`
+          width: '180px',
+          render: (value, item) => {
+            const idNumber = item.patientIdNumber ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">პ/ნ: ${item.patientIdNumber}</div>` : '';
+            return `<div><div class="font-medium text-gray-900 dark:text-white">${value}</div>${idNumber}</div>`;
+          }
         },
         {
           key: 'doctor',
           label: 'ექიმი',
           sortable: true,
           filterable: true,
-          width: '180px',
+          width: '160px',
           render: (value) => value ? `<span class="text-sm font-medium text-blue-600 dark:text-blue-400">${value}</span>` : `<span class="text-sm text-gray-400 dark:text-gray-500">-</span>`
         },
         {
@@ -343,6 +346,7 @@ export default {
           label: 'სერვისი',
           sortable: true,
           filterable: true,
+          width: '200px',
           render: (value, item) => {
             let html = `<div class="text-sm text-gray-600 dark:text-gray-400">`;
             
@@ -354,8 +358,8 @@ export default {
                 const discount = parseFloat(service.discount) || 0;
                 const discountedPrice = servicePrice * (1 - discount / 100);
                 
-                html += `<div class="mb-1 ${index > 0 ? 'mt-2 pt-2 border-t border-gray-200 dark:border-gray-700' : ''}">`;
-                html += `<div class="font-medium">${serviceName}</div>`;
+                html += `<div class="mb-1 ${index > 0 ? 'mt-1.5 pt-1.5 border-t border-gray-200 dark:border-gray-700' : ''}">`;
+                html += `<div class="font-medium text-xs">${serviceName}</div>`;
                 html += `<div class="text-xs text-gray-500 dark:text-gray-500 mt-0.5">`;
                 if (discount > 0) {
                   html += `<span class="line-through text-gray-400">₾${servicePrice.toFixed(2)}</span> `;
@@ -379,49 +383,45 @@ export default {
           key: 'amount',
           label: 'თანხა',
           sortable: true,
-          width: '120px',
-          render: (value) => `<span class="font-bold text-green-600 dark:text-green-400">₾${Number(value).toFixed(2)}</span>`
+          width: '100px',
+          render: (value) => `<span class="font-bold text-green-600 dark:text-green-400 text-sm">₾${Number(value).toFixed(2)}</span>`
         },
         {
           key: 'paymentMethod',
-          label: 'გადახდის მეთოდი',
+          label: 'მეთოდი / სტატუსი',
           sortable: true,
           filterable: true,
-          width: '150px',
-          render: (value) => {
+          width: '140px',
+          render: (value, item) => {
             const methods = {
               cash: { label: 'ნაღდი', class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
               card: { label: 'ბარათი', class: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
               transfer: { label: 'გადარიცხვა', class: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' }
             };
             const method = methods[value];
-            return `<span class="px-2 py-1 rounded-full text-xs font-medium ${method.class}">${method.label}</span>`;
-          }
-        },
-        {
-          key: 'status',
-          label: 'სტატუსი',
-          sortable: true,
-          filterable: true,
-          width: '130px',
-          render: (value) => {
+            const methodHtml = method ? `<div><span class="px-2 py-0.5 rounded-full text-xs font-medium ${method.class}">${method.label}</span></div>` : '<div>-</div>';
+            
             const statuses = {
               paid: { label: 'გადახდილი', class: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
               pending: { label: 'მოლოდინში', class: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
               cancelled: { label: 'გაუქმებული', class: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' }
             };
-            const status = statuses[value];
-            return `<span class="px-3 py-1 rounded-full text-xs font-medium ${status.class}">${status.label}</span>`;
+            const status = statuses[item.status];
+            const statusHtml = status ? `<div class="mt-1"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${status.class}">${status.label}</span></div>` : '';
+            
+            return methodHtml + statusHtml;
           }
         },
         {
           key: 'date',
           label: 'თარიღი',
           sortable: true,
-          width: '150px',
+          width: '140px',
           render: (value) => {
             const date = new Date(value);
-            return `<span class="text-sm text-gray-600 dark:text-gray-400">${date.toLocaleDateString('ka-GE', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>`;
+            const dateStr = date.toLocaleDateString('ka-GE', { year: 'numeric', month: 'short', day: 'numeric' });
+            const timeStr = date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' });
+            return `<div><div class="text-xs text-gray-600 dark:text-gray-400">${dateStr}</div><div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${timeStr}</div></div>`;
           }
         },
         {

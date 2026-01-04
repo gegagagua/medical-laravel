@@ -161,6 +161,15 @@
           :loading="loading"
         />
       </div>
+
+      <!-- Payment Modal -->
+      <PaymentModal
+        :is-open="isPaymentModalOpen"
+        :patient="selectedPatient"
+        :form-data="paymentFormData"
+        @close="closePaymentModal"
+        @submit="handlePaymentSubmit"
+      />
     </main>
   </div>
 </template>
@@ -173,13 +182,15 @@ import { getTodayDateString, formatDateToInput } from '../utils/dateUtils';
 import Navbar from './Navbar.vue';
 import Table from './ui/Table.vue';
 import Button from './ui/Button.vue';
+import PaymentModal from './PaymentModal.vue';
 
 export default {
   name: 'Visits',
   components: {
     Navbar,
     Table,
-    Button
+    Button,
+    PaymentModal
   },
   setup() {
     const authStore = useAuthStore();
@@ -192,6 +203,21 @@ export default {
       allAppointments: [],
       patients: [],
       loading: true,
+      isPaymentModalOpen: false,
+      selectedPatient: null,
+      doctorUsers: [],
+      services: [],
+      paymentFormData: {
+        service: '',
+        services: [],
+        doctor_id: '',
+        doctor: '',
+        department: '',
+        appointment_id: '',
+        amount: '',
+        payment_date: '',
+        payment_method: ''
+      },
       filters: {
         patientId: '',
         status: '',
@@ -210,59 +236,18 @@ export default {
           label: 'პაციენტი',
           sortable: true,
           filterable: true,
-          width: '200px',
-          render: (value) => `<span class="font-medium text-gray-900 dark:text-white">${value}</span>`
-        },
-        {
-          key: 'doctorName',
-          label: 'ექიმი',
-          sortable: true,
-          filterable: true,
-          render: (value) => `<span class="text-sm text-gray-600 dark:text-gray-400">${value || '-'}</span>`
-        },
-        {
-          key: 'department',
-          label: 'განყოფილება',
-          sortable: true,
-          filterable: true,
-          width: '150px',
-          render: (value) => `<span class="text-sm text-gray-600 dark:text-gray-400">${value || '-'}</span>`
-        },
-        {
-          key: 'service',
-          label: 'სერვისი',
-          sortable: true,
-          filterable: true,
-          width: '250px',
-          render: (value) => {
-            if (!value) return '<span class="text-sm text-gray-600 dark:text-gray-400">-</span>';
-            const services = Array.isArray(value) ? value : [value];
-            return `<span class="text-sm text-gray-600 dark:text-gray-400">${services.join(', ')}</span>`;
+          width: '180px',
+          render: (value, item) => {
+            const idNumber = item.patientIdNumber ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">პ/ნ: ${item.patientIdNumber}</div>` : '';
+            return `<div><div class="font-medium text-gray-900 dark:text-white">${value}</div>${idNumber}</div>`;
           }
-        },
-        {
-          key: 'date',
-          label: 'თარიღი',
-          sortable: true,
-          width: '130px',
-          render: (value) => {
-            const date = new Date(value);
-            return `<span class="font-medium text-gray-900 dark:text-white">${date.toLocaleDateString('ka-GE', { year: 'numeric', month: 'short', day: 'numeric' })}</span>`;
-          }
-        },
-        {
-          key: 'time',
-          label: 'დრო',
-          sortable: true,
-          width: '100px',
-          render: (value) => `<span class="font-mono text-sm text-gray-900 dark:text-white">${value}</span>`
         },
         {
           key: 'status',
           label: 'სტატუსი',
           sortable: true,
           filterable: true,
-          width: '180px',
+          width: '160px',
           render: (value, item) => {
             const statuses = {
               PENDING: { label: 'მოლოდინში', class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
@@ -284,7 +269,7 @@ export default {
               return `
                 <select 
                   data-visit-id="${visitId}"
-                  class="visit-status-select px-3 py-1 rounded-lg text-xs font-medium bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  class="visit-status-select px-2 py-1 rounded-lg text-xs font-medium bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer w-full"
                   value="${currentStatus}"
                 >
                   <option value="PENDING" ${currentStatus === 'PENDING' ? 'selected' : ''}>მოლოდინში</option>
@@ -294,25 +279,90 @@ export default {
                 </select>
               `;
             }
-            return `<span class="px-3 py-1 rounded-full text-xs font-medium ${status.class}">${status.label}</span>`;
+            return `<span class="px-2 py-1 rounded-full text-xs font-medium ${status.class}">${status.label}</span>`;
+          }
+        },
+        {
+          key: 'doctorName',
+          label: 'ექიმი / განყოფილება',
+          sortable: true,
+          filterable: true,
+          width: '180px',
+          render: (value, item) => {
+            const doctor = value ? `<div class="text-sm font-medium text-gray-900 dark:text-white">${value}</div>` : '<div class="text-sm text-gray-400">-</div>';
+            const department = item.department ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${item.department}</div>` : '';
+            return `<div>${doctor}${department}</div>`;
+          }
+        },
+        {
+          key: 'service',
+          label: 'სერვისი',
+          sortable: true,
+          filterable: true,
+          width: '200px',
+          render: (value) => {
+            if (!value) return '<span class="text-sm text-gray-600 dark:text-gray-400">-</span>';
+            const services = Array.isArray(value) ? value : [value];
+            // Show services on multiple lines if needed
+            return `<div class="text-sm text-gray-600 dark:text-gray-400">${services.map(s => `<div>${s}</div>`).join('')}</div>`;
+          }
+        },
+        {
+          key: 'date',
+          label: 'თარიღი / დრო',
+          sortable: true,
+          width: '140px',
+          render: (value, item) => {
+            const date = new Date(value);
+            const dateStr = date.toLocaleDateString('ka-GE', { year: 'numeric', month: 'short', day: 'numeric' });
+            const timeStr = item.time || '';
+            return `<div><div class="font-medium text-gray-900 dark:text-white text-sm">${dateStr}</div><div class="font-mono text-xs text-gray-500 dark:text-gray-400 mt-0.5">${timeStr}</div></div>`;
           }
         },
         {
           key: 'status_changed_at',
-          label: 'სტატუსის შეცვლის თარიღი',
+          label: 'სტატუსის შეცვლა',
           sortable: true,
-          width: '200px',
+          width: '150px',
           render: (value) => {
             if (!value) return '<span class="text-sm text-gray-500 dark:text-gray-400">-</span>';
             const date = new Date(value);
-            return `<span class="text-sm text-gray-600 dark:text-gray-400">${date.toLocaleDateString('ka-GE', { year: 'numeric', month: 'short', day: 'numeric' })} ${date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })}</span>`;
+            const dateStr = date.toLocaleDateString('ka-GE', { year: 'numeric', month: 'short', day: 'numeric' });
+            const timeStr = date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' });
+            return `<div><div class="text-xs text-gray-600 dark:text-gray-400">${dateStr}</div><div class="text-xs text-gray-500 dark:text-gray-400">${timeStr}</div></div>`;
           }
         },
         {
           key: 'notes',
           label: 'შენიშვნა',
           filterable: true,
-          render: (value) => `<span class="text-sm text-gray-600 dark:text-gray-400">${value || '-'}</span>`
+          width: '200px',
+          render: (value) => `<span class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">${value || '-'}</span>`
+        },
+        {
+          key: 'actions',
+          label: 'მოქმედებები',
+          sortable: false,
+          width: '120px',
+          render: (value, item) => {
+            const isAdmin = window.vm && window.vm.authStore?.userRole === 'ADMIN';
+            if (!isAdmin) return '<span class="text-sm text-gray-400">-</span>';
+            
+            return `
+              <div class="flex justify-center" onclick="event.stopPropagation()">
+                <button 
+                  onclick="window.vm?.openPaymentModal(${item.id})"
+                  class="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg transition cursor-pointer flex items-center gap-1"
+                  title="გადახდის დამატება"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  გადახდა
+                </button>
+              </div>
+            `;
+          }
         }
       ]
     };
@@ -407,6 +457,12 @@ export default {
     this.fetchAppointments();
     this.fetchPatients();
     
+    // Fetch doctors and services for payment modal
+    if (this.authStore.userRole === 'ADMIN') {
+      this.fetchDoctors();
+      this.fetchServices();
+    }
+    
     // Expose component instance to window for dropdown handlers
     window.vm = this;
     
@@ -494,6 +550,186 @@ export default {
       } catch (error) {
         console.error('Failed to update visit status:', error);
         this.toastStore.showToast('სტატუსის განახლება ვერ მოხერხდა', 'error');
+      }
+    },
+    async fetchDoctors() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get('/api/users', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        this.doctorUsers = response.data.filter(user => user.role === 'DOCTOR' || user.role === 'LABOR');
+      } catch (error) {
+        console.error('Failed to fetch doctors:', error);
+        this.doctorUsers = [];
+      }
+    },
+    async fetchServices() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get('/api/services', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        this.services = response.data;
+      } catch (error) {
+        console.error('Failed to fetch services:', error);
+        this.services = [];
+      }
+    },
+    async openPaymentModal(visitId) {
+      const visit = this.allAppointments.find(v => v.id === visitId);
+      if (!visit) {
+        this.toastStore.showToast('ვიზიტი არ მოიძებნა', 'error');
+        return;
+      }
+
+      // Find patient
+      const patient = this.patients.find(p => {
+        if (p.id === visit.patient_id) return true;
+        const patientName = `${p.first_name} ${p.last_name}`;
+        return patientName === visit.patientName;
+      });
+
+      if (!patient) {
+        this.toastStore.showToast('პაციენტი არ მოიძებნა', 'error');
+        return;
+      }
+
+      this.selectedPatient = {
+        id: patient.id,
+        first_name: patient.first_name || visit.patientName.split(' ')[0],
+        last_name: patient.last_name || visit.patientName.split(' ')[1] || ''
+      };
+
+      // Fetch doctors and services if not already loaded
+      if (this.doctorUsers.length === 0) {
+        await this.fetchDoctors();
+      }
+      if (this.services.length === 0) {
+        await this.fetchServices();
+      }
+
+      // Find doctor by ID or name
+      let doctorId = visit.doctor_id || null;
+      if (!doctorId && visit.doctorName) {
+        const doctor = this.doctorUsers.find(d => 
+          `${d.first_name} ${d.last_name}`.trim().toLowerCase() === visit.doctorName.trim().toLowerCase()
+        );
+        if (doctor) {
+          doctorId = doctor.id;
+        }
+      }
+
+      // Prepare services data
+      let serviceName = '';
+      let servicesList = [];
+      let servicePrice = 0;
+
+      if (visit.service) {
+        const services = Array.isArray(visit.service) ? visit.service : [visit.service];
+        serviceName = services.join(', ');
+        
+        // Get service prices from services array
+        if (visit.service_id && Array.isArray(visit.service_id)) {
+          servicesList = visit.service_id.map((serviceId, index) => {
+            const service = this.services.find(s => s.id === serviceId);
+            if (service) {
+              servicePrice += parseFloat(service.price) || 0;
+              return {
+                name: service.name,
+                price: service.price,
+                discount: 0
+              };
+            }
+            return {
+              name: services[index] || '',
+              price: 0,
+              discount: 0
+            };
+          });
+        } else {
+          // Fallback: create services list from names only
+          servicesList = services.map(name => ({
+            name: name,
+            price: 0,
+            discount: 0
+          }));
+        }
+      }
+
+      const today = getTodayDateString();
+      this.paymentFormData = {
+        service: serviceName,
+        services: servicesList,
+        doctor_id: doctorId,
+        doctor: visit.doctorName || '',
+        department: visit.department || '',
+        appointment_id: visit.id,
+        amount: servicePrice.toFixed(2),
+        payment_date: today,
+        payment_method: ''
+      };
+
+      this.isPaymentModalOpen = true;
+    },
+    closePaymentModal() {
+      this.isPaymentModalOpen = false;
+      this.selectedPatient = null;
+      this.paymentFormData = {
+        service: '',
+        services: [],
+        doctor_id: '',
+        doctor: '',
+        department: '',
+        appointment_id: '',
+        amount: '',
+        payment_date: '',
+        payment_method: ''
+      };
+    },
+    async handlePaymentSubmit(paymentData) {
+      try {
+        // If doctor_id is not set, try to find it from doctor name
+        if (!paymentData.doctor_id && paymentData.doctor) {
+          if (this.doctorUsers.length === 0) {
+            await this.fetchDoctors();
+          }
+          const doctor = this.doctorUsers.find(d => 
+            `${d.first_name} ${d.last_name}`.trim().toLowerCase() === paymentData.doctor.trim().toLowerCase()
+          );
+          if (doctor) {
+            paymentData.doctor_id = doctor.id;
+          }
+        }
+
+        // Get doctor name from selected doctor_id
+        const selectedDoctor = this.doctorUsers.find(d => d.id === Number(paymentData.doctor_id));
+        const doctorName = selectedDoctor ? `${selectedDoctor.first_name} ${selectedDoctor.last_name}` : paymentData.doctor;
+        
+        const paymentPayload = {
+          patient_id: this.selectedPatient.id,
+          user_id: paymentData.doctor_id || null,
+          appointment_id: paymentData.appointment_id || null,
+          service: paymentData.service,
+          doctor: doctorName || null,
+          amount: parseFloat(paymentData.amount),
+          payment_date: paymentData.payment_date,
+          payment_method: paymentData.payment_method,
+          status: 'paid',
+          services: paymentData.services || null
+        };
+
+        const token = localStorage.getItem('auth_token');
+        await axios.post('/api/payments', paymentPayload, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        this.closePaymentModal();
+        this.toastStore.showToast('გადახდა წარმატებით შეიქმნა', 'success');
+      } catch (error) {
+        console.error('Failed to create payment:', error);
+        const errorMessage = error.response?.data?.message || error.response?.data?.error || 'შეცდომა მოხდა გადახდის შექმნისას';
+        this.toastStore.showToast(errorMessage, 'error');
       }
     }
   }

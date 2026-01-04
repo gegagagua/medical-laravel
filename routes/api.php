@@ -48,6 +48,9 @@ Route::prefix('users')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [UserController::class, 'index']);
     Route::post('/', [UserController::class, 'store']);
     Route::get('/{id}', [UserController::class, 'show']);
+    Route::put('/{id}', [UserController::class, 'update']);
+    Route::patch('/{id}', [UserController::class, 'update']);
+    Route::patch('/{id}/password', [UserController::class, 'changePassword']);
 });
 
 // Payments

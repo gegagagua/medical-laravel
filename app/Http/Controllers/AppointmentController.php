@@ -10,7 +10,7 @@ class AppointmentController extends Controller
 {
     public function index(Request $request)
     {
-        $appointments = Appointment::with('patient:id,first_name,last_name')
+        $appointments = Appointment::with('patient:id,first_name,last_name,id_number')
             ->orderBy('date', 'desc')
             ->get();
 
@@ -20,6 +20,7 @@ class AppointmentController extends Controller
                 'id' => $appointment->id,
                 'patient_id' => $appointment->patient_id,
                 'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
+                'patientIdNumber' => $appointment->patient->id_number ?? null,
                 'doctor_id' => $appointment->doctor_id,
                 'doctorName' => $appointment->doctor_name,
                 'department' => $appointment->department,
@@ -39,12 +40,13 @@ class AppointmentController extends Controller
 
     public function show($id)
     {
-        $appointment = Appointment::with('patient')->findOrFail($id);
+        $appointment = Appointment::with('patient:id,first_name,last_name,id_number')->findOrFail($id);
 
         return response()->json([
             'id' => $appointment->id,
             'patient_id' => $appointment->patient_id,
             'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
+            'patientIdNumber' => $appointment->patient->id_number ?? null,
             'doctor_id' => $appointment->doctor_id,
             'doctorName' => $appointment->doctor_name,
             'department' => $appointment->department,
@@ -92,11 +94,12 @@ class AppointmentController extends Controller
             'notes' => $validated['notes'] ?? null,
         ]);
 
-        $appointment->load('patient:id,first_name,last_name');
+        $appointment->load('patient:id,first_name,last_name,id_number');
 
         return response()->json([
             'id' => $appointment->id,
             'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
+            'patientIdNumber' => $appointment->patient->id_number ?? null,
             'doctorName' => $appointment->doctor_name,
             'department' => $appointment->department,
             'service' => $appointment->service,
