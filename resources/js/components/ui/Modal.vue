@@ -1,10 +1,14 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-50 overflow-y-auto" @click.self="onClose">
+  <div v-if="isOpen" class="fixed inset-0 z-50 overflow-y-auto">
     <!-- Backdrop -->
-    <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" style="opacity: 0.5;" />
+    <div 
+      class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" 
+      style="opacity: 0.5;"
+      @click="onClose"
+    />
 
     <!-- Modal -->
-    <div class="flex min-h-full items-center justify-center p-4">
+    <div class="flex min-h-full items-center justify-center p-4" @click.stop>
       <div
         :class="['relative w-full', sizeClasses[size], 'bg-white dark:bg-gray-800 rounded-2xl shadow-xl transform transition-all']"
         @click.stop
@@ -65,18 +69,28 @@ export default {
     isOpen(newVal) {
       if (newVal) {
         document.body.style.overflow = 'hidden';
+        // Add ESC key listener when modal opens
+        document.addEventListener('keydown', this.handleEscape);
       } else {
         document.body.style.overflow = 'unset';
+        // Remove ESC key listener when modal closes
+        document.removeEventListener('keydown', this.handleEscape);
       }
     }
   },
   methods: {
     onClose() {
       this.$emit('close');
+    },
+    handleEscape(event) {
+      if (event.key === 'Escape' && this.isOpen) {
+        this.onClose();
+      }
     }
   },
   beforeUnmount() {
     document.body.style.overflow = 'unset';
+    document.removeEventListener('keydown', this.handleEscape);
   }
 };
 </script>
