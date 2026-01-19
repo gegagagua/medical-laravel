@@ -81,6 +81,13 @@ class AppointmentController extends Controller
         // Combine date and time into datetime
         $dateTime = $validated['date'] . ' ' . $validated['time'];
         
+        // Determine status: PENDING for laboratory, CONFIRMED for others
+        $departmentLower = mb_strtolower($validated['department'], 'UTF-8');
+        $isLaboratory = str_contains($departmentLower, 'ლაბორატორია') || 
+                       str_contains($departmentLower, 'laboratory') || 
+                       str_contains($departmentLower, 'ლაბორ');
+        $defaultStatus = $isLaboratory ? 'PENDING' : 'CONFIRMED';
+        
         $appointment = Appointment::create([
             'patient_id' => $validated['patient_id'],
             'doctor_id' => $validated['doctor_id'] ?? null,
@@ -90,7 +97,7 @@ class AppointmentController extends Controller
             'service_id' => $validated['service_id'], // JSON array
             'date' => $dateTime,
             'time' => $validated['time'],
-            'status' => $validated['status'] ?? 'PENDING',
+            'status' => $validated['status'] ?? $defaultStatus,
             'notes' => $validated['notes'] ?? null,
         ]);
 
@@ -141,13 +148,6 @@ class AppointmentController extends Controller
     {
         $appointment = Appointment::findOrFail($id);
         
-        // Only allow deletion if status is PENDING
-        if ($appointment->status !== 'PENDING') {
-            return response()->json([
-                'message' => 'მხოლოდ მოლოდინში მყოფი ვიზიტების წაშლაა შესაძლებელი'
-            ], 422);
-        }
-
         $appointment->delete();
 
         return response()->json([

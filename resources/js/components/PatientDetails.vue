@@ -196,6 +196,10 @@ export default {
     },
     async handleVisitSubmit(visitData) {
       try {
+        // Determine status: PENDING for laboratory, CONFIRMED for others
+        const departmentLower = visitData.department.toLowerCase();
+        const isLaboratory = departmentLower.includes('ლაბორატორია') || departmentLower.includes('laboratory') || departmentLower.includes('ლაბორ');
+        
         const visitPayload = {
           patient_id: this.$route.params.id,
           doctor_id: visitData.doctor_id,
@@ -205,7 +209,7 @@ export default {
           service_id: visitData.service_id,
           date: visitData.date,
           time: visitData.time,
-          status: 'PENDING',
+          status: isLaboratory ? 'PENDING' : 'CONFIRMED',
           notes: visitData.notes || ''
         };
 

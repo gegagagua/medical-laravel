@@ -56,7 +56,6 @@
               გადახდის დამატება
             </Button>
             <Button
-              v-if="isPending(visit.status)"
               variant="secondary"
               size="sm"
               @click="openDeleteModal(visit)"

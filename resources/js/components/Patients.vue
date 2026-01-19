@@ -583,13 +583,17 @@ export default {
 
         const token = localStorage.getItem('auth_token');
         
+        // Determine status: PENDING for laboratory, CONFIRMED for others
+        const departmentLower = this.visitFormData.department.toLowerCase();
+        const isLaboratory = departmentLower.includes('ლაბორატორია') || departmentLower.includes('laboratory') || departmentLower.includes('ლაბორ');
+        
         const visitData = {
           patient_id: this.visitFormData.patient_id,
           doctor_name: this.visitFormData.doctor,
           department: this.visitFormData.department,
           date: this.visitFormData.date,
           time: this.visitFormData.time,
-          status: 'PENDING',
+          status: isLaboratory ? 'PENDING' : 'CONFIRMED',
           notes: this.visitFormData.notes || ''
         };
 

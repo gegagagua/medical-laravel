@@ -75,4 +75,3 @@ Route::prefix('pdf')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [PdfController::class, 'index']);
     Route::get('/download/{filename}', [PdfController::class, 'download']);
 });
-
