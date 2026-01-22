@@ -94,7 +94,7 @@
         </div>
 
         <!-- Filters -->
-        <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               თარიღიდან
@@ -117,6 +117,22 @@
               @change="applyFilters"
               class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              გადახდის მეთოდი
+            </label>
+            <select
+              v-model="filters.paymentMethod"
+              @change="applyFilters"
+              class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">ყველა</option>
+              <option value="cash">ნაღდი</option>
+              <option value="card">ბარათი</option>
+              <option value="transfer">გადარიცხვა</option>
+            </select>
           </div>
 
           <div class="flex items-end gap-2">
@@ -327,7 +343,8 @@ export default {
       selectedPayments: [],
       filters: {
         dateFrom: '',
-        dateTo: ''
+        dateTo: '',
+        paymentMethod: ''
       },
       formData: {
         patient_id: '',
@@ -508,6 +525,13 @@ export default {
         filtered = filtered.filter(p => {
           const paymentDate = new Date(p.date).toISOString().split('T')[0];
           return paymentDate <= this.filters.dateTo;
+        });
+      }
+
+      // Filter by payment method
+      if (this.filters.paymentMethod) {
+        filtered = filtered.filter(p => {
+          return p.paymentMethod === this.filters.paymentMethod;
         });
       }
 
@@ -730,7 +754,8 @@ export default {
     clearFilters() {
       this.filters = {
         dateFrom: '',
-        dateTo: ''
+        dateTo: '',
+        paymentMethod: ''
       };
     },
     togglePaymentSelection(paymentId, isChecked) {
