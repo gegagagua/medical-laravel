@@ -14,6 +14,7 @@ class Patient extends Model
         'age',
         'gender',
         'phone',
+        'address',
         'diagnosis',
         'status',
         'last_visit_at',
@@ -32,6 +33,7 @@ class Patient extends Model
         if ($this->date_of_birth) {
             return $this->date_of_birth->diffInYears(now());
         }
+
         return $this->attributes['age'] ?? null;
     }
 }
