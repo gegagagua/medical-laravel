@@ -12,7 +12,8 @@ class PatientController extends Controller
         $patients = Patient::orderByDesc('created_at')->get()->map(function (Patient $p) {
             return [
                 'id' => $p->id,
-                'fullName' => $p->first_name . ' ' . $p->last_name,
+                'gegasCode' => $p->gegas_code,
+                'fullName' => $p->first_name.' '.$p->last_name,
                 'idNumber' => $p->id_number,
                 'dateOfBirth' => $p->date_of_birth?->toISOString(),
                 'age' => $p->age,
@@ -30,11 +31,13 @@ class PatientController extends Controller
     public function show($id)
     {
         $p = Patient::findOrFail($id);
+
         return response()->json([
             'id' => $p->id,
             'first_name' => $p->first_name,
             'last_name' => $p->last_name,
             'id_number' => $p->id_number,
+            'gegas_code' => $p->gegas_code,
             'date_of_birth' => $p->date_of_birth?->toISOString(),
             'age' => $p->age,
             'gender' => $p->gender,
@@ -78,7 +81,7 @@ class PatientController extends Controller
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'id_number' => 'required|string|max:20|unique:patients,id_number,' . $id,
+            'id_number' => 'required|string|max:20|unique:patients,id_number,'.$id,
             'date_of_birth' => 'required|date|before:today',
             'gender' => 'required|in:male,female',
             'phone' => 'nullable|string|max:30',

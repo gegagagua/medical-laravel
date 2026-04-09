@@ -11,17 +11,27 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('appointments', function (Blueprint $table) {
-            // Drop old FK and rename to patient_id, then add FK to patients
-            try { \DB::statement('ALTER TABLE appointments DROP FOREIGN KEY appointments_user_id_foreign'); } catch (\Throwable $e) {}
-            if (Schema::hasColumn('appointments', 'user_id') && !Schema::hasColumn('appointments', 'patient_id')) {
+        try {
+            \DB::statement('ALTER TABLE appointments DROP FOREIGN KEY appointments_user_id_foreign');
+        } catch (\Throwable $e) {
+        }
+
+        // Use if/elseif: after rename, patient_id does not exist yet in hasColumn checks, so two
+        // separate `if` blocks would queue both rename and add — duplicate column error.
+        if (Schema::hasColumn('appointments', 'user_id') && ! Schema::hasColumn('appointments', 'patient_id')) {
+            Schema::table('appointments', function (Blueprint $table) {
                 $table->renameColumn('user_id', 'patient_id');
-            }
-            if (!Schema::hasColumn('appointments', 'patient_id')) {
+            });
+        } elseif (! Schema::hasColumn('appointments', 'patient_id')) {
+            Schema::table('appointments', function (Blueprint $table) {
                 $table->unsignedBigInteger('patient_id')->after('id');
-            }
-            try { \DB::statement('ALTER TABLE appointments ADD CONSTRAINT appointments_patient_id_foreign FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE'); } catch (\Throwable $e) {}
-        });
+            });
+        }
+
+        try {
+            \DB::statement('ALTER TABLE appointments ADD CONSTRAINT appointments_patient_id_foreign FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE');
+        } catch (\Throwable $e) {
+        }
     }
 
     /**
@@ -30,8 +40,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('appointments', function (Blueprint $table) {
-            try { \DB::statement('ALTER TABLE appointments DROP FOREIGN KEY appointments_patient_id_foreign'); } catch (\Throwable $e) {}
-            if (Schema::hasColumn('appointments', 'patient_id') && !Schema::hasColumn('appointments', 'user_id')) {
+            try {
+                \DB::statement('ALTER TABLE appointments DROP FOREIGN KEY appointments_patient_id_foreign');
+            } catch (\Throwable $e) {
+            }
+            if (Schema::hasColumn('appointments', 'patient_id') && ! Schema::hasColumn('appointments', 'user_id')) {
                 $table->renameColumn('patient_id', 'user_id');
             }
         });

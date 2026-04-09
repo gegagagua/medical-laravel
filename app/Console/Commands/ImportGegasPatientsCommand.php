@@ -133,6 +133,7 @@ class ImportGegasPatientsCommand extends Command
         $fixed = [
             'date' => 0,
             'diagnosis' => 4,
+            'code' => 3,
             'patient' => 5,
             'id' => 6,
             'dob' => 7,
@@ -151,6 +152,7 @@ class ImportGegasPatientsCommand extends Command
                 return match ($logical) {
                     'date' => $col($map, $cells, 'თარიღი') ?: ($cells[$fixed['date']] ?? ''),
                     'diagnosis' => $col($map, $cells, 'დიაგნოზი') ?: ($cells[$fixed['diagnosis']] ?? ''),
+                    'code' => $col($map, $cells, 'კოდი') ?: ($cells[$fixed['code']] ?? ''),
                     'patient' => $col($map, $cells, 'პაციენტი') ?: ($cells[$fixed['patient']] ?? ''),
                     'id' => $col($map, $cells, 'პირადობა') ?: ($cells[$fixed['id']] ?? ''),
                     'dob' => $col($map, $cells, 'დაბ.თარ.') ?: ($cells[$fixed['dob']] ?? ''),
@@ -168,6 +170,7 @@ class ImportGegasPatientsCommand extends Command
             $out[] = [
                 'visit_date' => $get('date'),
                 'diagnosis' => $get('diagnosis'),
+                'code' => $get('code'),
                 'patient' => $patientName,
                 'personal_id' => $get('id'),
                 'dob_raw' => $get('dob'),
@@ -209,6 +212,7 @@ class ImportGegasPatientsCommand extends Command
         $merged['address'] = $pickLonger($a['address'] ?? '', $b['address'] ?? '');
         $merged['diagnosis'] = ($b['diagnosis'] ?? '') !== '' ? $b['diagnosis'] : ($a['diagnosis'] ?? '');
         $merged['phone'] = ($b['phone'] ?? '') !== '' ? $b['phone'] : ($a['phone'] ?? '');
+        $merged['code'] = ($b['code'] ?? '') !== '' ? trim((string) $b['code']) : trim((string) ($a['code'] ?? ''));
         $merged['dob_raw'] = $this->preferDobRaw($a['dob_raw'] ?? '', $b['dob_raw'] ?? '');
 
         $va = $this->parseVisitDate($a['visit_date'] ?? '');
@@ -335,14 +339,14 @@ class ImportGegasPatientsCommand extends Command
 
         $age = null;
         if ($dob) {
-            $years = $dob->diffInYears(now(), false);
-            $age = $years >= 0 ? $years : null;
+            $age = max(0, (int) $dob->age);
         }
 
         return [
             'first_name' => $firstName,
             'last_name' => $lastName,
             'id_number' => $idNumber,
+            'gegas_code' => $this->normalizeGegasCode($row['code'] ?? ''),
             'date_of_birth' => $dob,
             'age' => $age,
             'gender' => 'female',
@@ -352,6 +356,13 @@ class ImportGegasPatientsCommand extends Command
             'status' => 'active',
             'last_visit_at' => $visit,
         ];
+    }
+
+    private function normalizeGegasCode(string $code): ?string
+    {
+        $c = trim($code);
+
+        return $c !== '' ? $c : null;
     }
 
     private function normalizePhone(string $phone): ?string
@@ -385,13 +396,16 @@ class ImportGegasPatientsCommand extends Command
         }
         if ($incoming['date_of_birth'] && ! $existing->date_of_birth) {
             $pick['date_of_birth'] = $incoming['date_of_birth'];
-            $pick['age'] = $incoming['age'];
+            $pick['age'] = max(0, (int) $incoming['date_of_birth']->age);
         }
         if ($incoming['last_visit_at']) {
             $ex = $existing->last_visit_at;
             if (! $ex || $incoming['last_visit_at']->gt($ex)) {
                 $pick['last_visit_at'] = $incoming['last_visit_at'];
             }
+        }
+        if (! empty($incoming['gegas_code'])) {
+            $pick['gegas_code'] = $incoming['gegas_code'];
         }
 
         return $pick;

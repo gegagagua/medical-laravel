@@ -80,7 +80,7 @@
           :columns="columns"
           :page-size="10"
           :searchable="true"
-          search-placeholder="მოძებნეთ პაციენტი (სახელი, პ/ნ, ტელეფონი)..."
+          search-placeholder="მოძებნეთ პაციენტი (სახელი, პ/ნ, ტელეფონი, კოდი)..."
           empty-message="პაციენტები არ მოიძებნა"
           :loading="loading"
           :on-row-click="handleRowClick"
@@ -300,10 +300,14 @@ export default {
         },
       columns: [
         {
-          key: 'id',
-          label: 'ID',
+          key: 'gegasCode',
+          label: 'კოდი',
           sortable: true,
-          width: '80px'
+          filterable: true,
+          width: '96px',
+          render: (value) => (value != null && String(value).trim() !== ''
+            ? `<span class="font-mono text-sm">${String(value)}</span>`
+            : '<span class="text-gray-400">—</span>')
         },
         {
           key: 'fullName',
@@ -323,7 +327,11 @@ export default {
           label: 'ასაკი',
           sortable: true,
           width: '100px',
-          render: (value) => `${value} წ.`
+          render: (value) => {
+            const n = Number(value);
+            const years = Number.isFinite(n) ? Math.floor(Math.abs(n)) : 0;
+            return `${years} წ.`;
+          }
         },
         {
           key: 'gender',

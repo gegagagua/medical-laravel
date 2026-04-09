@@ -10,6 +10,7 @@ class Patient extends Model
         'first_name',
         'last_name',
         'id_number',
+        'gegas_code',
         'date_of_birth',
         'age',
         'gender',
@@ -26,14 +27,16 @@ class Patient extends Model
     ];
 
     /**
-     * Calculate age from date of birth
+     * სრული წლები დაბადების თარიღიდან (მაგ. 31.9 → 31).
      */
-    public function getAgeAttribute()
+    public function getAgeAttribute(): ?int
     {
         if ($this->date_of_birth) {
-            return $this->date_of_birth->diffInYears(now());
+            return (int) $this->date_of_birth->age;
         }
 
-        return $this->attributes['age'] ?? null;
+        $stored = $this->attributes['age'] ?? null;
+
+        return $stored !== null ? (int) $stored : null;
     }
 }
