@@ -178,6 +178,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast';
+import { paymentService } from '../services/paymentService';
 import { getTodayDateString, formatDateToInput } from '../utils/dateUtils';
 import Navbar from './Navbar.vue';
 import Table from './ui/Table.vue';
@@ -575,13 +576,13 @@ export default {
           this.allAppointments[visitIndex].status_changed_at = response.data.visit?.status_changed_at || new Date().toISOString();
         }
 
-        this.toastStore.showToast('სტატუსი წარმატებით განახლდა', 'success');
+        this.toastStore.success('სტატუსი წარმატებით განახლდა');
         
         // Refresh appointments to get updated data with status_changed_at
         await this.fetchAppointments();
       } catch (error) {
         console.error('Failed to update visit status:', error);
-        this.toastStore.showToast('სტატუსის განახლება ვერ მოხერხდა', 'error');
+        this.toastStore.error('სტატუსის განახლება ვერ მოხერხდა');
       }
     },
     async fetchDoctors() {
@@ -738,7 +739,7 @@ export default {
     async openPaymentModal(visitId) {
       const visit = this.allAppointments.find(v => v.id === visitId);
       if (!visit) {
-        this.toastStore.showToast('ვიზიტი არ მოიძებნა', 'error');
+        this.toastStore.error('ვიზიტი არ მოიძებნა');
         return;
       }
 
@@ -750,7 +751,7 @@ export default {
       });
 
       if (!patient) {
-        this.toastStore.showToast('პაციენტი არ მოიძებნა', 'error');
+        this.toastStore.error('პაციენტი არ მოიძებნა');
         return;
       }
 
@@ -846,6 +847,14 @@ export default {
         payment_method: ''
       };
     },
+    parseAmount(value) {
+      if (value === null || value === undefined || value === '') {
+        return NaN;
+      }
+      const normalized = String(value).trim().replace(/\s/g, '').replace(',', '.');
+      const n = parseFloat(normalized);
+      return Number.isFinite(n) ? n : NaN;
+    },
     async handlePaymentSubmit(paymentData) {
       try {
         // If doctor_id is not set, try to find it from doctor name
@@ -864,31 +873,47 @@ export default {
         // Get doctor name from selected doctor_id
         const selectedDoctor = this.doctorUsers.find(d => d.id === Number(paymentData.doctor_id));
         const doctorName = selectedDoctor ? `${selectedDoctor.first_name} ${selectedDoctor.last_name}` : paymentData.doctor;
-        
+
+        const amount = this.parseAmount(paymentData.amount);
+        if (!Number.isFinite(amount) || amount < 0) {
+          this.toastStore.error('თანხა არასწორია');
+          return;
+        }
+
+        const services = Array.isArray(paymentData.services) ? paymentData.services : null;
+
         const paymentPayload = {
-          patient_id: this.selectedPatient.id,
+          patient_id: Number(this.selectedPatient.id),
           user_id: paymentData.doctor_id || null,
           appointment_id: paymentData.appointment_id || null,
           service: paymentData.service,
           doctor: doctorName || null,
-          amount: parseFloat(paymentData.amount),
+          amount,
           payment_date: paymentData.payment_date,
           payment_method: paymentData.payment_method,
           status: 'paid',
-          services: paymentData.services || null
+          services: services && services.length > 0 ? services : null,
         };
 
-        const token = localStorage.getItem('auth_token');
-        await axios.post('/api/payments', paymentPayload, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        await paymentService.createPayment(paymentPayload);
 
         this.closePaymentModal();
-        this.toastStore.showToast('გადახდა წარმატებით შეიქმნა', 'success');
+        this.toastStore.success('გადახდა წარმატებით შეიქმნა');
       } catch (error) {
         console.error('Failed to create payment:', error);
-        const errorMessage = error.response?.data?.message || error.response?.data?.error || 'შეცდომა მოხდა გადახდის შექმნისას';
-        this.toastStore.showToast(errorMessage, 'error');
+        const data = error.response?.data;
+        let errorMessage =
+          data?.message ||
+          data?.error ||
+          error.message ||
+          'შეცდომა მოხდა გადახდის შექმნისას';
+        if (data?.errors && typeof data.errors === 'object') {
+          const parts = Object.values(data.errors).flat().filter(Boolean);
+          if (parts.length) {
+            errorMessage = parts.join(' ');
+          }
+        }
+        this.toastStore.error(errorMessage);
       }
     },
     printVisit(visitId) {

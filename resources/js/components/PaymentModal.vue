@@ -170,15 +170,17 @@ export default {
       if (newValue) {
         this.error = '';
         this.submitting = false;
-        // Initialize discount property for each service if it doesn't exist
         if (this.formData.services && this.formData.services.length > 0) {
-          this.formData.services.forEach(service => {
+          this.formData.services.forEach((service) => {
             if (service.discount === undefined) {
-              this.$set(service, 'discount', 0);
+              service.discount = 0;
             }
           });
           this.updateTotalAmount();
         }
+      }
+      if (!newValue) {
+        this.submitting = false;
       }
     }
   },

@@ -219,10 +219,14 @@ export default {
 
       // Global search
       if (this.searchQuery) {
-        result = result.filter(item =>
-          this.columns.some(column => {
+        const q = this.searchQuery.toLowerCase();
+        result = result.filter((item) =>
+          this.columns.some((column) => {
             const value = item[column.key];
-            return value?.toString().toLowerCase().includes(this.searchQuery.toLowerCase());
+            if (value === null || value === undefined) {
+              return false;
+            }
+            return String(value).toLowerCase().includes(q);
           })
         );
       }
@@ -230,9 +234,13 @@ export default {
       // Column-specific filters
       Object.entries(this.columnFilters).forEach(([key, filterValue]) => {
         if (filterValue) {
-          result = result.filter(item => {
+          const fq = filterValue.toLowerCase();
+          result = result.filter((item) => {
             const value = item[key];
-            return value?.toString().toLowerCase().includes(filterValue.toLowerCase());
+            if (value === null || value === undefined) {
+              return false;
+            }
+            return String(value).toLowerCase().includes(fq);
           });
         }
       });

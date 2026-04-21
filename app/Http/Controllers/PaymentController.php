@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
-use App\Models\Patient;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -15,14 +14,18 @@ class PaymentController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($payment) {
+                $patient = $payment->patient;
+
                 return [
                     'id' => $payment->id,
                     'invoiceNumber' => $payment->invoice_number,
                     'patientId' => $payment->patient_id,
                     'appointmentId' => $payment->appointment_id,
-                    'patientName' => $payment->patient->first_name . ' ' . $payment->patient->last_name,
-                    'patientIdNumber' => $payment->patient->id_number ?? null,
-                    'patientDateOfBirth' => $payment->patient->date_of_birth?->toISOString(),
+                    'patientName' => $patient
+                        ? ($patient->first_name.' '.$patient->last_name)
+                        : '—',
+                    'patientIdNumber' => $patient?->id_number,
+                    'patientDateOfBirth' => $patient?->date_of_birth?->toISOString(),
                     'service' => $payment->service,
                     'doctor' => $payment->doctor,
                     'userId' => $payment->user_id,
@@ -61,7 +64,7 @@ class PaymentController extends Controller
         // Calculate discount information
         $hasDiscount = false;
         $servicesDiscounts = null;
-        
+
         if (isset($validated['services']) && is_array($validated['services'])) {
             $servicesDiscounts = [];
             foreach ($validated['services'] as $service) {
@@ -72,7 +75,7 @@ class PaymentController extends Controller
                 $servicesDiscounts[] = [
                     'name' => $service['name'] ?? '',
                     'price' => $service['price'] ?? 0,
-                    'discount' => $discount
+                    'discount' => $discount,
                 ];
             }
         }
@@ -115,7 +118,7 @@ class PaymentController extends Controller
             'invoiceNumber' => $payment->invoice_number,
             'patientId' => $payment->patient_id,
             'appointmentId' => $payment->appointment_id,
-            'patientName' => $payment->patient->first_name . ' ' . $payment->patient->last_name,
+            'patientName' => $payment->patient->first_name.' '.$payment->patient->last_name,
             'patientIdNumber' => $payment->patient->id_number ?? null,
             'patientDateOfBirth' => $payment->patient->date_of_birth?->toISOString(),
             'service' => $payment->service,
@@ -135,7 +138,7 @@ class PaymentController extends Controller
     public function byDoctor(Request $request)
     {
         $user = $request->user();
-        $doctorName = $user->first_name . ' ' . $user->last_name;
+        $doctorName = $user->first_name.' '.$user->last_name;
 
         $payments = Payment::with('patient:id,first_name,last_name,id_number,date_of_birth')
             ->where('doctor', $doctorName)
@@ -143,12 +146,16 @@ class PaymentController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($payment) {
+                $patient = $payment->patient;
+
                 return [
                     'id' => $payment->id,
                     'invoiceNumber' => $payment->invoice_number,
-                    'patientName' => $payment->patient->first_name . ' ' . $payment->patient->last_name,
-                    'patientIdNumber' => $payment->patient->id_number ?? null,
-                    'patientDateOfBirth' => $payment->patient->date_of_birth?->toISOString(),
+                    'patientName' => $patient
+                        ? ($patient->first_name.' '.$patient->last_name)
+                        : '—',
+                    'patientIdNumber' => $patient?->id_number,
+                    'patientDateOfBirth' => $patient?->date_of_birth?->toISOString(),
                     'service' => $payment->service,
                     'doctor' => $payment->doctor,
                     'amount' => $payment->amount,

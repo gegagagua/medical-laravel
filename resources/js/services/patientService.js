@@ -3,7 +3,8 @@ import axios from 'axios';
 const getAuthToken = () => localStorage.getItem('auth_token');
 
 const getAuthHeaders = () => ({
-  'Authorization': `Bearer ${getAuthToken()}`
+  'Authorization': `Bearer ${getAuthToken()}`,
+  Accept: 'application/json',
 });
 
 export const patientService = {
@@ -29,11 +30,14 @@ export const patientService = {
     const response = await axios.get('/api/payments', {
       headers: getAuthHeaders()
     });
-    
-    // Filter payments for this patient
-    return response.data.filter(
-      payment => payment.patientId == patientId || payment.patient_id == patientId
-    );
+
+    const list = Array.isArray(response.data) ? response.data : [];
+    const pid = Number(patientId);
+
+    return list.filter((payment) => {
+      const rowPatientId = Number(payment.patientId ?? payment.patient_id);
+      return Number.isFinite(pid) && rowPatientId === pid;
+    });
   }
 };
 

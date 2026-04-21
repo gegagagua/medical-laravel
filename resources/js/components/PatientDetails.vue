@@ -307,6 +307,14 @@ export default {
         payment_method: ''
       };
     },
+    parseAmount(value) {
+      if (value === null || value === undefined || value === '') {
+        return NaN;
+      }
+      const normalized = String(value).trim().replace(/\s/g, '').replace(',', '.');
+      const n = parseFloat(normalized);
+      return Number.isFinite(n) ? n : NaN;
+    },
     async handlePaymentSubmit(paymentData) {
       try {
         // If doctor_id is not set, try to find it from doctor name
@@ -325,28 +333,47 @@ export default {
         // Get doctor name from selected doctor_id
         const selectedDoctor = this.doctorUsers.find(d => d.id === Number(paymentData.doctor_id));
         const doctorName = selectedDoctor ? `${selectedDoctor.first_name} ${selectedDoctor.last_name}` : paymentData.doctor;
-        
+
+        const amount = this.parseAmount(paymentData.amount);
+        if (!Number.isFinite(amount) || amount < 0) {
+          this.toastStore.error('თანხა არასწორია');
+          return;
+        }
+
+        const services = Array.isArray(paymentData.services) ? paymentData.services : null;
+
         const paymentPayload = {
-          patient_id: this.$route.params.id,
+          patient_id: Number(this.$route.params.id),
           user_id: paymentData.doctor_id || null,
           appointment_id: paymentData.appointment_id || null,
           service: paymentData.service,
           doctor: doctorName || null,
-          amount: parseFloat(paymentData.amount),
+          amount,
           payment_date: paymentData.payment_date,
           payment_method: paymentData.payment_method,
           status: 'paid',
-          services: paymentData.services || null
+          services: services && services.length > 0 ? services : null,
         };
 
         await paymentService.createPayment(paymentPayload);
 
-        this.closePaymentModal();
         await this.fetchPayments();
+        this.closePaymentModal();
         this.toastStore.success('გადახდა წარმატებით შეიქმნა');
       } catch (error) {
         console.error('Failed to create payment:', error);
-        const errorMessage = error.response?.data?.message || error.response?.data?.error || 'შეცდომა მოხდა გადახდის შექმნისას';
+        const data = error.response?.data;
+        let errorMessage =
+          data?.message ||
+          data?.error ||
+          error.message ||
+          'შეცდომა მოხდა გადახდის შექმნისას';
+        if (data?.errors && typeof data.errors === 'object') {
+          const parts = Object.values(data.errors).flat().filter(Boolean);
+          if (parts.length) {
+            errorMessage = parts.join(' ');
+          }
+        }
         this.toastStore.error(errorMessage);
         throw error;
       }
