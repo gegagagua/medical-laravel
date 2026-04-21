@@ -49,7 +49,7 @@ class PaymentController extends Controller
             'patient_id' => 'required|exists:patients,id',
             'user_id' => 'nullable|exists:users,id',
             'appointment_id' => 'nullable|exists:appointments,id',
-            'service' => 'required|string|max:255',
+            'service' => 'required|string',
             'doctor' => 'nullable|string|max:255',
             'amount' => 'required|numeric|min:0',
             'payment_date' => 'required|date',
