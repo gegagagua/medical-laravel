@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Patient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PatientController extends Controller
 {
@@ -62,11 +63,15 @@ class PatientController extends Controller
             'status' => 'required|in:active,inactive',
         ]);
 
-        // Calculate age from date of birth
-        $dateOfBirth = \Carbon\Carbon::parse($validated['date_of_birth']);
-        $validated['age'] = $dateOfBirth->age;
+        $patient = DB::transaction(function () use ($validated) {
+            Patient::query()->orderByDesc('id')->limit(1)->lockForUpdate()->first();
 
-        $patient = Patient::create($validated);
+            $dateOfBirth = \Carbon\Carbon::parse($validated['date_of_birth']);
+            $validated['age'] = $dateOfBirth->age;
+            $validated['gegas_code'] = Patient::nextNumericGegasCode();
+
+            return Patient::create($validated);
+        });
 
         return response()->json([
             'message' => 'Patient created successfully',

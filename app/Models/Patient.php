@@ -39,4 +39,21 @@ class Patient extends Model
 
         return $stored !== null ? (int) $stored : null;
     }
+
+    public static function nextNumericGegasCode(): string
+    {
+        $max = 0;
+        static::query()
+            ->whereNotNull('gegas_code')
+            ->lockForUpdate()
+            ->cursor()
+            ->each(function (Patient $patient) use (&$max) {
+                $c = trim((string) $patient->gegas_code);
+                if ($c !== '' && ctype_digit($c)) {
+                    $max = max($max, (int) $c);
+                }
+            });
+
+        return (string) ($max + 1);
+    }
 }
