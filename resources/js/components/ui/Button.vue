@@ -1,11 +1,12 @@
 <template>
   <button
+    v-bind="$attrs"
     :class="[
       'inline-flex justify-center items-center px-4 py-3 border rounded-lg font-medium transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
       variants[variant],
       fullWidth ? 'w-full' : 'w-auto'
     ]"
-    v-bind="$attrs"
+    :disabled="disabled"
   >
     <slot />
   </button>
@@ -21,6 +22,10 @@ export default {
       validator: (value) => ['primary', 'secondary', 'outline', 'social'].includes(value)
     },
     fullWidth: {
+      type: Boolean,
+      default: false
+    },
+    disabled: {
       type: Boolean,
       default: false
     }

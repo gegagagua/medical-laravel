@@ -54,6 +54,7 @@
       />
 
       <PaymentModal
+        ref="paymentModalRef"
         :is-open="isPaymentModalOpen"
         :patient="patient"
         :form-data="paymentFormData"
@@ -116,7 +117,8 @@ export default {
         amount: '',
         payment_date: '',
         payment_method: ''
-      }
+      },
+      paymentCreateInFlight: false
     };
   },
   mounted() {
@@ -317,6 +319,10 @@ export default {
       return Number.isFinite(n) ? n : NaN;
     },
     async handlePaymentSubmit(paymentData) {
+      if (this.paymentCreateInFlight) {
+        return;
+      }
+      this.paymentCreateInFlight = true;
       try {
         // If doctor_id is not set, try to find it from doctor name
         if (!paymentData.doctor_id && paymentData.doctor) {
@@ -376,7 +382,9 @@ export default {
           }
         }
         this.toastStore.error(errorMessage);
-        throw error;
+      } finally {
+        this.paymentCreateInFlight = false;
+        this.$refs.paymentModalRef?.resetSubmitting?.();
       }
     },
     goBack() {

@@ -1301,6 +1301,9 @@ export default {
       this.error = '';
     },
     async handleSubmit() {
+      if (this.submitting) {
+        return;
+      }
       this.submitting = true;
       this.error = '';
 

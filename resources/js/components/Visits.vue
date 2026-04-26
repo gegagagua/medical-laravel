@@ -164,6 +164,7 @@
 
       <!-- Payment Modal -->
       <PaymentModal
+        ref="paymentModalRef"
         :is-open="isPaymentModalOpen"
         :patient="selectedPatient"
         :form-data="paymentFormData"
@@ -227,6 +228,7 @@ export default {
         dateFrom: '',
         dateTo: ''
       },
+      paymentCreateInFlight: false,
       columns: [
         {
           key: 'id',
@@ -860,6 +862,10 @@ export default {
       return Number.isFinite(n) ? n : NaN;
     },
     async handlePaymentSubmit(paymentData) {
+      if (this.paymentCreateInFlight) {
+        return;
+      }
+      this.paymentCreateInFlight = true;
       try {
         // If doctor_id is not set, try to find it from doctor name
         if (!paymentData.doctor_id && paymentData.doctor) {
@@ -918,6 +924,9 @@ export default {
           }
         }
         this.toastStore.error(errorMessage);
+      } finally {
+        this.paymentCreateInFlight = false;
+        this.$refs.paymentModalRef?.resetSubmitting?.();
       }
     },
     printVisit(visitId) {

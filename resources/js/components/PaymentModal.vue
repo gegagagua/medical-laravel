@@ -206,6 +206,9 @@ export default {
       this.formData.amount = total.toFixed(2);
     },
     handleSubmit() {
+      if (this.submitting) {
+        return;
+      }
       this.submitting = true;
       this.error = '';
 
@@ -217,6 +220,9 @@ export default {
       }
 
       this.$emit('submit', { ...this.formData });
+    },
+    resetSubmitting() {
+      this.submitting = false;
     }
   }
 };
