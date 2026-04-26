@@ -68,99 +68,110 @@
 
       <!-- Table -->
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
-        <div class="mb-6 flex items-center justify-between">
-          <div>
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        <div class="mb-6 flex flex-col gap-3 xl:flex-row xl:flex-wrap xl:items-end xl:justify-between">
+          <div class="min-w-0 shrink-0 xl:max-w-[280px]">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white leading-tight">
               გადახდების ისტორია
             </h2>
-            <p class="text-gray-600 dark:text-gray-400">
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
               ყველა გადახდის სრული ჩანაწერი
             </p>
           </div>
-          <div class="flex gap-2">
-            <Button variant="secondary" @click="exportToExcel" class="hidden md:flex">
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+          <div class="flex flex-1 flex-wrap items-end gap-3 min-w-0">
+            <div class="w-full min-[480px]:w-auto min-[480px]:min-w-[140px]">
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">პერიოდი</label>
+              <select
+                v-model="filters.datePreset"
+                @change="onDatePresetChange"
+                class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="today">დღეს</option>
+                <option value="yesterday">გუშინ</option>
+                <option value="week">1 კვირა</option>
+                <option value="month">1 თვე</option>
+                <option value="custom">Custom Date</option>
+              </select>
+            </div>
+
+            <template v-if="filters.datePreset === 'custom'">
+              <div class="w-full min-[480px]:w-auto min-[480px]:min-w-[150px]">
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">თარიღიდან</label>
+                <input
+                  v-model="filters.dateFrom"
+                  type="date"
+                  @input="onCustomDateChange"
+                  @change="applyFilters"
+                  class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div class="w-full min-[480px]:w-auto min-[480px]:min-w-[150px]">
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">თარიღამდე</label>
+                <input
+                  v-model="filters.dateTo"
+                  type="date"
+                  @input="onCustomDateChange"
+                  @change="applyFilters"
+                  class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+            </template>
+
+            <div class="w-full min-[480px]:w-auto min-[480px]:min-w-[140px]">
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">მეთოდი</label>
+              <select
+                v-model="filters.paymentMethod"
+                @change="applyFilters"
+                class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">ყველა</option>
+                <option value="cash">ნაღდი</option>
+                <option value="card">ბარათი</option>
+                <option value="transfer">გადარიცხვა</option>
+              </select>
+            </div>
+
+            <div class="w-full min-[480px]:w-auto min-[480px]:min-w-[160px]">
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">განყოფილება</label>
+              <select
+                v-model="filters.department"
+                @change="applyFilters"
+                class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">ყველა</option>
+                <option v-for="dep in uniqueDepartments" :key="dep" :value="dep">
+                  {{ dep }}
+                </option>
+              </select>
+            </div>
+
+            <div class="w-full min-[480px]:w-auto min-[480px]:min-w-[180px]">
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">ექიმი</label>
+              <select
+                v-model="filters.doctor"
+                @change="applyFilters"
+                class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">ყველა</option>
+                <option v-for="doc in uniqueDoctors" :key="doc" :value="doc">
+                  {{ doc }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <Button variant="secondary" @click="exportToExcel" class="hidden md:inline-flex">
+              <svg class="w-5 h-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               Excel-ში ექსპორტი
             </Button>
-            <Button variant="primary" @click="openModal" class="hidden md:flex">
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-              ახალი გადახდა
-            </Button>
-          </div>
-        </div>
-
-        <!-- Filters -->
-        <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              თარიღიდან
-            </label>
-            <input
-              v-model="filters.dateFrom"
-              type="date"
-              @change="applyFilters"
-              class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              თარიღამდე
-            </label>
-            <input
-              v-model="filters.dateTo"
-              type="date"
-              @change="applyFilters"
-              class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              გადახდის მეთოდი
-            </label>
-            <select
-              v-model="filters.paymentMethod"
-              @change="applyFilters"
-              class="block w-full py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">ყველა</option>
-              <option value="cash">ნაღდი</option>
-              <option value="card">ბარათი</option>
-              <option value="transfer">გადარიცხვა</option>
-            </select>
-          </div>
-
-          <div class="flex items-end gap-2">
-            <Button 
-              v-if="selectedPayments.length > 0" 
-              variant="primary" 
-              @click="printSelectedPayments" 
-              class="w-full"
-            >
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <Button variant="primary" @click="printFilteredPayments">
+              <svg class="w-5 h-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
-              დაბეჭდვა ({{ selectedPayments.length }})
-            </Button>
-            <Button variant="secondary" @click="clearFilters" class="w-full">
-              ფილტრების გასუფთავება
-            </Button>
-          </div>
-        </div>
-
-        <!-- Selected Payments Info -->
-        <div v-if="selectedPayments.length > 0" class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <div class="flex items-center justify-between">
-            <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
-              არჩეულია {{ selectedPayments.length }} გადახდა
-            </p>
-            <Button variant="secondary" size="sm" @click="clearSelection">
-              გასუფთავება
+              დაბეჭდვა
             </Button>
           </div>
         </div>
@@ -173,11 +184,11 @@
             </svg>
             Excel-ში ექსპორტი
           </Button>
-          <Button variant="primary" @click="openModal" class="w-full">
+          <Button variant="primary" @click="printFilteredPayments" class="w-full">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
-            ახალი გადახდა
+            დაბეჭდვა (ფილტრი)
           </Button>
         </div>
 
@@ -329,6 +340,9 @@ export default {
     return { toastStore };
   },
   data() {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
     return {
       payments: [],
       allPayments: [],
@@ -340,11 +354,13 @@ export default {
       isModalOpen: false,
       submitting: false,
       error: '',
-      selectedPayments: [],
       filters: {
-        dateFrom: '',
-        dateTo: '',
-        paymentMethod: ''
+        datePreset: 'today',
+        dateFrom: today,
+        dateTo: today,
+        paymentMethod: '',
+        department: '',
+        doctor: ''
       },
       formData: {
         patient_id: '',
@@ -356,24 +372,6 @@ export default {
         status: 'pending'
       },
       columns: [
-        {
-          key: 'selected',
-          label: '',
-          sortable: false,
-          width: '50px',
-          render: (value, item) => {
-            return `
-              <div class="flex justify-center" onclick="event.stopPropagation()">
-                <input 
-                  type="checkbox" 
-                  data-payment-id="${item.id}"
-                  class="payment-checkbox w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                  onchange="window.vm?.togglePaymentSelection(${item.id}, this.checked)"
-                />
-              </div>
-            `;
-          }
-        },
         {
           key: 'invoiceNumber',
           label: 'ინვოისი',
@@ -400,6 +398,14 @@ export default {
           filterable: true,
           width: '160px',
           render: (value) => value ? `<span class="text-sm font-medium text-blue-600 dark:text-blue-400">${value}</span>` : `<span class="text-sm text-gray-400 dark:text-gray-500">-</span>`
+        },
+        {
+          key: 'department',
+          label: 'განყოფილება',
+          sortable: true,
+          filterable: true,
+          width: '150px',
+          render: (value) => value ? `<span class="text-sm text-gray-800 dark:text-gray-200">${value}</span>` : `<span class="text-sm text-gray-400 dark:text-gray-500">-</span>`
         },
         {
           key: 'service',
@@ -477,10 +483,19 @@ export default {
           label: 'თარიღი',
           sortable: true,
           width: '140px',
-          render: (value) => {
-            const date = new Date(value);
-            const dateStr = date.toLocaleDateString('ka-GE', { year: 'numeric', month: 'short', day: 'numeric' });
-            const timeStr = date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' });
+          render: (value, item) => {
+            const dateText = typeof value === 'string' ? value.slice(0, 10) : '';
+            const dateSource = /^\d{4}-\d{2}-\d{2}$/.test(dateText) ? `${dateText}T00:00:00` : '';
+            const dateObj = dateSource ? new Date(dateSource) : null;
+            const dateStr = dateObj && !Number.isNaN(dateObj.getTime())
+              ? dateObj.toLocaleDateString('ka-GE', { year: 'numeric', month: 'short', day: 'numeric' })
+              : '-';
+
+            const createdRaw = typeof item?.created_at === 'string' ? item.created_at.replace(' ', 'T') : '';
+            const createdDate = createdRaw ? new Date(createdRaw) : null;
+            const timeStr = createdDate && !Number.isNaN(createdDate.getTime())
+              ? createdDate.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })
+              : '-';
             return `<div><div class="text-xs text-gray-600 dark:text-gray-400">${dateStr}</div><div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${timeStr}</div></div>`;
           }
         },
@@ -488,19 +503,29 @@ export default {
           key: 'actions',
           label: 'მოქმედებები',
           sortable: false,
-          width: '120px',
+          width: '200px',
           render: (value, item) => {
             return `
-              <div class="flex justify-center" onclick="event.stopPropagation()">
-                <button 
+              <div class="flex flex-wrap justify-center gap-1.5" onclick="event.stopPropagation()">
+                <button
                   onclick="window.printPayment(${item.id}); return false;"
-                  class="px-3 py-1 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition cursor-pointer flex items-center gap-1"
+                  class="px-2.5 py-1 text-xs sm:text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition cursor-pointer inline-flex items-center gap-1"
                   title="დაბეჭდვა"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                   </svg>
                   დაბეჭდვა
+                </button>
+                <button
+                  onclick="window.deletePayment(${item.id}); return false;"
+                  class="px-2.5 py-1 text-xs sm:text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition cursor-pointer inline-flex items-center gap-1"
+                  title="წაშლა"
+                >
+                  <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  წაშლა
                 </button>
               </div>
             `;
@@ -512,19 +537,27 @@ export default {
   computed: {
     filteredPayments() {
       let filtered = [...this.allPayments];
+      const dateFrom = this.filters.dateFrom;
+      const dateTo = this.filters.dateTo;
 
-      // Filter by date range
-      if (this.filters.dateFrom) {
+      let startDate = dateFrom;
+      let endDate = dateTo;
+      if (startDate && endDate && startDate > endDate) {
+        startDate = endDate;
+        endDate = dateFrom;
+      }
+
+      if (startDate) {
         filtered = filtered.filter(p => {
-          const paymentDate = new Date(p.date).toISOString().split('T')[0];
-          return paymentDate >= this.filters.dateFrom;
+          const paymentDate = this.extractPaymentDate(p.date);
+          return paymentDate && paymentDate >= startDate;
         });
       }
 
-      if (this.filters.dateTo) {
+      if (endDate) {
         filtered = filtered.filter(p => {
-          const paymentDate = new Date(p.date).toISOString().split('T')[0];
-          return paymentDate <= this.filters.dateTo;
+          const paymentDate = this.extractPaymentDate(p.date);
+          return paymentDate && paymentDate <= endDate;
         });
       }
 
@@ -535,7 +568,31 @@ export default {
         });
       }
 
+      if (this.filters.department) {
+        filtered = filtered.filter(p => (p.department || '') === this.filters.department);
+      }
+
+      if (this.filters.doctor) {
+        filtered = filtered.filter(p => (p.doctor || '') === this.filters.doctor);
+      }
+
       return filtered;
+    },
+    uniqueDepartments() {
+      const set = new Set();
+      (this.allPayments || []).forEach((p) => {
+        const d = p.department != null ? String(p.department).trim() : '';
+        if (d) set.add(d);
+      });
+      return [...set].sort((a, b) => a.localeCompare(b, 'ka'));
+    },
+    uniqueDoctors() {
+      const set = new Set();
+      (this.allPayments || []).forEach((p) => {
+        const d = p.doctor != null ? String(p.doctor).trim() : '';
+        if (d) set.add(d);
+      });
+      return [...set].sort((a, b) => a.localeCompare(b, 'ka'));
     },
     totalRevenue() {
       return this.filteredPayments.filter(p => p.status === 'paid').reduce((sum, p) => sum + Number(p.amount), 0);
@@ -555,20 +612,90 @@ export default {
     this.fetchPatients();
     this.fetchDoctors();
     this.fetchPdfFiles();
-    // Set default date to today
-    const today = new Date().toISOString().split('T')[0];
-    this.formData.payment_date = today;
+    const now = new Date();
+    this.formData.payment_date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     // Make print method available globally for table actions
     window.printPayment = (id) => this.printPayment(id);
-    // Expose component instance for checkbox handlers
-    window.vm = this;
+    window.deletePayment = (id) => this.deletePayment(id);
   },
   beforeUnmount() {
-    // Clean up global method
     delete window.printPayment;
-    delete window.vm;
+    delete window.deletePayment;
   },
   methods: {
+    parseDateTimeForDisplay(value) {
+      if (!value) return null;
+      const raw = String(value).trim().replace(' ', 'T');
+      const parsed = new Date(raw);
+      if (Number.isNaN(parsed.getTime())) return null;
+      return parsed;
+    },
+    getPaymentDateTimeValue(payment) {
+      if (payment?.created_at) return payment.created_at;
+      return payment?.date || '';
+    },
+    formatDate(value) {
+      return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+    },
+    getRangeFromPreset(preset) {
+      const now = new Date();
+      const today = this.formatDate(now);
+      if (preset === 'today') {
+        return { dateFrom: today, dateTo: today };
+      }
+      if (preset === 'yesterday') {
+        const yesterdayDate = new Date(now);
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+        const yesterday = this.formatDate(yesterdayDate);
+        return { dateFrom: yesterday, dateTo: yesterday };
+      }
+      if (preset === 'week') {
+        const weekStartDate = new Date(now);
+        weekStartDate.setDate(weekStartDate.getDate() - 6);
+        return { dateFrom: this.formatDate(weekStartDate), dateTo: today };
+      }
+      if (preset === 'month') {
+        const monthStartDate = new Date(now);
+        monthStartDate.setDate(monthStartDate.getDate() - 29);
+        return { dateFrom: this.formatDate(monthStartDate), dateTo: today };
+      }
+      return { dateFrom: this.filters.dateFrom, dateTo: this.filters.dateTo };
+    },
+    onDatePresetChange() {
+      if (this.filters.datePreset === 'custom') {
+        if (!this.filters.dateFrom || !this.filters.dateTo) {
+          const today = this.formatDate(new Date());
+          this.filters.dateFrom = today;
+          this.filters.dateTo = today;
+        }
+        this.applyFilters();
+        return;
+      }
+
+      const range = this.getRangeFromPreset(this.filters.datePreset);
+      this.filters.dateFrom = range.dateFrom;
+      this.filters.dateTo = range.dateTo;
+      this.applyFilters();
+    },
+    onCustomDateChange() {
+      if (this.filters.datePreset !== 'custom') {
+        this.filters.datePreset = 'custom';
+      }
+      this.applyFilters();
+    },
+    extractPaymentDate(value) {
+      if (!value) return '';
+      const raw = String(value);
+      const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (match) return match[1];
+
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return '';
+      const y = parsed.getFullYear();
+      const m = String(parsed.getMonth() + 1).padStart(2, '0');
+      const d = String(parsed.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    },
     async fetchPatients() {
       this.patientsLoading = true;
       try {
@@ -751,60 +878,13 @@ export default {
     applyFilters() {
       // Filters are applied automatically via computed property
     },
-    clearFilters() {
-      this.filters = {
-        dateFrom: '',
-        dateTo: '',
-        paymentMethod: ''
-      };
-    },
-    togglePaymentSelection(paymentId, isChecked) {
-      if (isChecked) {
-        const payment = this.allPayments.find(p => p.id === paymentId);
-        if (!payment) return;
-
-        // Check if this is the first payment or if it's the same patient
-        if (this.selectedPayments.length === 0) {
-          this.selectedPayments.push(payment);
-        } else {
-          const firstPatientId = this.selectedPayments[0].patientId;
-          if (payment.patientId === firstPatientId) {
-            this.selectedPayments.push(payment);
-          } else {
-            // Uncheck the checkbox
-            const checkbox = document.querySelector(`input[data-payment-id="${paymentId}"]`);
-            if (checkbox) checkbox.checked = false;
-            this.toastStore.warning('შეგიძლიათ აირჩიოთ მხოლოდ ერთიდაიგივე პაციენტის გადახდები');
-            return;
-          }
-        }
-      } else {
-        this.selectedPayments = this.selectedPayments.filter(p => p.id !== paymentId);
-      }
-    },
-    clearSelection() {
-      this.selectedPayments = [];
-      // Uncheck all checkboxes
-      document.querySelectorAll('.payment-checkbox').forEach(checkbox => {
-        checkbox.checked = false;
-      });
-    },
-    printSelectedPayments() {
-      if (this.selectedPayments.length === 0) {
-        this.toastStore.warning('გთხოვთ აირჩიოთ გადახდები');
+    printFilteredPayments() {
+      const list = this.filteredPayments || [];
+      if (list.length === 0) {
+        this.toastStore.warning('ბეჭდვისთვის გაფილტრული გადახდები არ არის');
         return;
       }
-
-      // Verify all payments are for the same patient
-      const firstPatientId = this.selectedPayments[0].patientId;
-      const allSamePatient = this.selectedPayments.every(p => p.patientId === firstPatientId);
-      
-      if (!allSamePatient) {
-        this.toastStore.warning('შეგიძლიათ დაბეჭდოთ მხოლოდ ერთიდაიგივე პაციენტის გადახდები');
-        return;
-      }
-
-      this.printMultiplePayments(this.selectedPayments);
+      this.printMultiplePayments([...list]);
     },
     printMultiplePayments(payments) {
       if (payments.length === 0) return;
@@ -813,19 +893,22 @@ export default {
       if (!printWindow) return;
 
       const firstPayment = payments[0];
+      const allSamePatient =
+        payments.length > 0 &&
+        payments.every(p => p.patientId === payments[0].patientId);
       let totalAmount = 0;
       payments.forEach(p => totalAmount += parseFloat(p.amount) || 0);
 
       let paymentsHtml = '';
       payments.forEach((payment, index) => {
-        const paymentDate = new Date(payment.date);
-        const formattedDate = paymentDate.toLocaleDateString('ka-GE', { 
+        const paymentDate = this.parseDateTimeForDisplay(this.getPaymentDateTimeValue(payment));
+        const formattedDate = paymentDate ? paymentDate.toLocaleDateString('ka-GE', {
           year: 'numeric', 
           month: 'long', 
           day: 'numeric',
           hour: '2-digit',
           minute: '2-digit'
-        });
+        }) : '-';
 
         paymentsHtml += `
           <div style="page-break-after: ${index < payments.length - 1 ? 'always' : 'auto'}; margin-bottom: 40px;">
@@ -898,8 +981,12 @@ export default {
             <div class="invoice-info">
               <div class="info-section">
                 <h3>პაციენტი</h3>
-                <p style="font-weight: 600; margin-bottom: 5px;">${firstPayment.patientName || '-'}</p>
-                ${firstPayment.patientIdNumber ? `<p style="font-size: 14px; color: #666; margin: 3px 0;">პ/ნ: ${firstPayment.patientIdNumber}</p>` : ''}
+                ${
+                  allSamePatient
+                    ? `<p style="font-weight: 600; margin-bottom: 5px;">${firstPayment.patientName || '-'}</p>
+                ${firstPayment.patientIdNumber ? `<p style="font-size: 14px; color: #666; margin: 3px 0;">პ/ნ: ${firstPayment.patientIdNumber}</p>` : ''}`
+                    : `<p style="font-weight: 600; margin-bottom: 5px;">სხვადასხვა პაციენტის გადახდები</p>`
+                }
               </div>
             </div>
 
@@ -938,7 +1025,7 @@ export default {
         <!DOCTYPE html>
         <html>
           <head>
-            <title>გადახდების ინვოისები - ${firstPayment.patientName}</title>
+            <title>გადახდების ინვოისები${allSamePatient ? ` - ${firstPayment.patientName || ''}` : ''}</title>
             <style>
               body {
                 font-family: Arial, sans-serif;
@@ -1055,7 +1142,7 @@ export default {
         }
 
         const dataToExport = this.filteredPayments.map(payment => {
-          const date = new Date(payment.date);
+          const date = this.parseDateTimeForDisplay(this.getPaymentDateTimeValue(payment));
           
           // Format services with discounts
           let servicesText = payment.service || '-';
@@ -1077,14 +1164,15 @@ export default {
           return {
             'ინვოისი': payment.invoiceNumber || '',
             'პაციენტი': payment.patientName || '',
+            'განყოფილება': payment.department || '-',
             'ექიმი': payment.doctor || '-',
             'სერვისები': servicesText,
             'თანხა': Number(payment.amount || 0).toFixed(2),
             'ფასდაკლება': payment.hasDiscount ? `${(payment.discountPercentage || 0).toFixed(2)}%` : '-',
             'გადახდის მეთოდი': this.getPaymentMethodLabel(payment.paymentMethod),
             'სტატუსი': this.getStatusLabel(payment.status),
-            'თარიღი': date.toLocaleDateString('ka-GE', { year: 'numeric', month: '2-digit', day: '2-digit' }),
-            'დრო': date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })
+            'თარიღი': date ? date.toLocaleDateString('ka-GE', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '-',
+            'დრო': date ? date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' }) : '-'
           };
         });
 
@@ -1243,6 +1331,22 @@ export default {
         this.submitting = false;
       }
     },
+    async deletePayment(paymentId) {
+      if (!confirm('დარწმუნებული ხართ, რომ გსურთ ამ გადახდის წაშლა?')) {
+        return;
+      }
+      try {
+        const token = localStorage.getItem('auth_token');
+        await axios.delete(`/api/payments/${paymentId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        this.toastStore.success('გადახდა წაიშალა');
+        await this.fetchPayments();
+      } catch (error) {
+        const msg = error.response?.data?.message || 'გადახდის წაშლა ვერ მოხერხდა';
+        this.toastStore.error(msg);
+      }
+    },
     printPayment(paymentId) {
       const payment = this.allPayments.find(p => p.id === paymentId || p.invoiceNumber === paymentId);
       if (!payment) {
@@ -1276,14 +1380,14 @@ export default {
       const printWindow = window.open('', '_blank');
       if (!printWindow) return;
 
-      const paymentDate = new Date(payment.date);
-      const formattedDate = paymentDate.toLocaleDateString('ka-GE', { 
+      const paymentDate = this.parseDateTimeForDisplay(this.getPaymentDateTimeValue(payment));
+      const formattedDate = paymentDate ? paymentDate.toLocaleDateString('ka-GE', {
         year: 'numeric', 
         month: 'long', 
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
-      });
+      }) : '-';
 
       const printContent = `
         <!DOCTYPE html>

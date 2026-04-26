@@ -9,7 +9,10 @@ class PaymentController extends Controller
 {
     public function index()
     {
-        $payments = Payment::with('patient:id,first_name,last_name,id_number,date_of_birth')
+        $payments = Payment::with([
+            'patient:id,first_name,last_name,id_number,date_of_birth',
+            'appointment:id,department',
+        ])
             ->orderBy('payment_date', 'desc')
             ->orderBy('created_at', 'desc')
             ->get()
@@ -21,6 +24,7 @@ class PaymentController extends Controller
                     'invoiceNumber' => $payment->invoice_number,
                     'patientId' => $payment->patient_id,
                     'appointmentId' => $payment->appointment_id,
+                    'department' => $payment->appointment?->department,
                     'patientName' => $patient
                         ? ($patient->first_name.' '.$patient->last_name)
                         : '—',
@@ -33,10 +37,10 @@ class PaymentController extends Controller
                     'hasDiscount' => $payment->has_discount ?? false,
                     'discountPercentage' => $payment->discount_percentage,
                     'servicesDiscounts' => $payment->services_discounts,
-                    'date' => $payment->payment_date->toISOString(),
+                    'date' => $payment->payment_date?->format('Y-m-d'),
                     'paymentMethod' => $payment->payment_method,
                     'status' => $payment->status,
-                    'created_at' => $payment->created_at->toISOString(),
+                    'created_at' => $payment->created_at?->format('Y-m-d H:i:s'),
                 ];
             });
 
@@ -127,10 +131,10 @@ class PaymentController extends Controller
             'hasDiscount' => $payment->has_discount,
             'discountPercentage' => $payment->discount_percentage,
             'servicesDiscounts' => $payment->services_discounts,
-            'date' => $payment->payment_date->toISOString(),
+            'date' => $payment->payment_date?->format('Y-m-d'),
             'paymentMethod' => $payment->payment_method,
             'status' => $payment->status,
-            'created_at' => $payment->created_at->toISOString(),
+            'created_at' => $payment->created_at?->format('Y-m-d H:i:s'),
             'message' => 'Payment created successfully',
         ], 201);
     }
@@ -140,7 +144,10 @@ class PaymentController extends Controller
         $user = $request->user();
         $doctorName = $user->first_name.' '.$user->last_name;
 
-        $payments = Payment::with('patient:id,first_name,last_name,id_number,date_of_birth')
+        $payments = Payment::with([
+            'patient:id,first_name,last_name,id_number,date_of_birth',
+            'appointment:id,department',
+        ])
             ->where('doctor', $doctorName)
             ->orderBy('payment_date', 'desc')
             ->orderBy('created_at', 'desc')
@@ -158,17 +165,28 @@ class PaymentController extends Controller
                     'patientDateOfBirth' => $patient?->date_of_birth?->toISOString(),
                     'service' => $payment->service,
                     'doctor' => $payment->doctor,
+                    'department' => $payment->appointment?->department,
                     'amount' => $payment->amount,
                     'hasDiscount' => $payment->has_discount ?? false,
                     'discountPercentage' => $payment->discount_percentage,
                     'servicesDiscounts' => $payment->services_discounts,
-                    'date' => $payment->payment_date->toISOString(),
+                    'date' => $payment->payment_date?->format('Y-m-d'),
                     'paymentMethod' => $payment->payment_method,
                     'status' => $payment->status,
-                    'created_at' => $payment->created_at->toISOString(),
+                    'created_at' => $payment->created_at?->format('Y-m-d H:i:s'),
                 ];
             });
 
         return response()->json($payments);
+    }
+
+    public function destroy($id)
+    {
+        $payment = Payment::findOrFail($id);
+        $payment->delete();
+
+        return response()->json([
+            'message' => 'Payment deleted successfully',
+        ]);
     }
 }

@@ -72,6 +72,7 @@ import { paymentService } from '../services/paymentService';
 import { userService } from '../services/userService';
 import { serviceService } from '../services/serviceService';
 import { getTodayDateString } from '../utils/dateUtils';
+import { formatGeorgianDate } from '../utils/georgianDate';
 import Navbar from './Navbar.vue';
 import Button from './ui/Button.vue';
 import PatientInfoCard from './PatientInfoCard.vue';
@@ -470,8 +471,14 @@ export default {
                 <div class="info-label">ID:</div>
                 <div class="info-value">${this.patient.id}</div>
                 
+                <div class="info-label">კოდი:</div>
+                <div class="info-value">${this.patient.gegas_code || '—'}</div>
+                
+                <div class="info-label">დაბადების თარიღი:</div>
+                <div class="info-value">${this.formatGeorgianDate(this.patient.date_of_birth)}</div>
+                
                 <div class="info-label">ელ. ფოსტა:</div>
-                <div class="info-value">${this.patient.email}</div>
+                <div class="info-value">${this.patient.email || '—'}</div>
                 
                 ${this.patient.phone ? `
                 <div class="info-label">ტელეფონი:</div>
@@ -479,7 +486,7 @@ export default {
                 ` : ''}
                 
                 <div class="info-label">რეგისტრაციის თარიღი:</div>
-                <div class="info-value">${this.formatDate(this.patient.created_at)}</div>
+                <div class="info-value">${this.formatGeorgianDate(this.patient.created_at)}</div>
               </div>
             </div>
             
@@ -499,12 +506,7 @@ export default {
                   </thead>
                   <tbody>
                     ${this.visits.map(visit => {
-                      const visitDate = new Date(visit.date);
-                      const formattedDate = visitDate.toLocaleDateString('ka-GE', { 
-                        year: 'numeric', 
-                        month: '2-digit', 
-                        day: '2-digit' 
-                      });
+                      const formattedDate = this.formatGeorgianDate(visit.date);
                       return `
                         <tr>
                           <td>${formattedDate}</td>
@@ -524,10 +526,7 @@ export default {
             </div>
             
             <div class="print-date">
-              დაბეჭდილია: ${new Date().toLocaleDateString('ka-GE', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
+              დაბეჭდილია: ${this.formatGeorgianDate(new Date())}, ${new Date().toLocaleTimeString('ka-GE', {
                 hour: '2-digit',
                 minute: '2-digit'
               })}
@@ -543,15 +542,7 @@ export default {
         printWindow.print();
       }, 250);
     },
-    formatDate(date) {
-      if (!date) return '-';
-      const d = new Date(date);
-      return d.toLocaleDateString('ka-GE', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-    },
+    formatGeorgianDate,
     getStatusLabel(status) {
       const statuses = {
         'PENDING': 'მოლოდინში',

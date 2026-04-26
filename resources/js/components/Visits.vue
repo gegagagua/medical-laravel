@@ -180,6 +180,7 @@ import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast';
 import { paymentService } from '../services/paymentService';
 import { getTodayDateString, formatDateToInput } from '../utils/dateUtils';
+import { formatGeorgianDate } from '../utils/georgianDate';
 import Navbar from './Navbar.vue';
 import Table from './ui/Table.vue';
 import Button from './ui/Button.vue';
@@ -238,10 +239,13 @@ export default {
           label: 'პაციენტი',
           sortable: true,
           filterable: true,
-          width: '180px',
+          width: '220px',
           render: (value, item) => {
             const idNumber = item.patientIdNumber ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">პ/ნ: ${item.patientIdNumber}</div>` : '';
-            return `<div><div class="font-medium text-gray-900 dark:text-white">${value}</div>${idNumber}</div>`;
+            const dob = item.patientDateOfBirth
+              ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">დაბადების თარიღი: ${formatGeorgianDate(item.patientDateOfBirth)}</div>`
+              : '';
+            return `<div><div class="font-medium text-gray-900 dark:text-white">${value}</div>${idNumber}${dob}</div>`;
           }
         },
         {
@@ -923,16 +927,15 @@ export default {
         return;
       }
 
-      // Check for matching PDF/DOCX files for services
+      this.openVisitSummaryPrint(visit);
+
       const services = Array.isArray(visit.service) ? visit.service : (visit.service ? [visit.service] : []);
-      const openedFiles = [];
-      
       if (services.length === 0) {
-        this.toastStore.warning('ვიზიტზე სერვისები არ არის მითითებული');
         return;
       }
 
-      services.forEach(serviceName => {
+      const openedFiles = [];
+      services.forEach((serviceName) => {
         const matchingFile = this.findMatchingPdfFile(serviceName);
         if (matchingFile && !openedFiles.find(f => f.name === matchingFile.name)) {
           this.openPdfFile(matchingFile);
@@ -942,29 +945,15 @@ export default {
 
       if (openedFiles.length === 0) {
         this.toastStore.warning('სერვისების შესაბამისი PDF/DOCX ფაილები არ მოიძებნა');
-        return;
       }
-
-      // Don't print HTML page, only PDF/DOCX files
-      return;
-
-      const visitDate = new Date(visit.date);
-      const formattedDate = visitDate.toLocaleDateString('ka-GE', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric'
-      });
-      const formattedTime = visit.time || visitDate.toLocaleTimeString('ka-GE', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-
+    },
+    openVisitSummaryPrint(visit) {
       const getStatusLabel = (status) => {
         const statuses = {
-          'PENDING': 'მოლოდინში',
-          'CONFIRMED': 'დადასტურებული',
-          'CANCELLED': 'გაუქმებული',
-          'COMPLETED': 'დასრულებული',
+          PENDING: 'მოლოდინში',
+          CONFIRMED: 'დადასტურებული',
+          CANCELLED: 'გაუქმებული',
+          COMPLETED: 'დასრულებული',
           pending: 'მოლოდინში',
           confirmed: 'დადასტურებული',
           cancelled: 'გაუქმებული',
@@ -973,214 +962,95 @@ export default {
         return statuses[status] || status;
       };
 
-      const servicesHtml = services.length > 0 
-        ? services.map(s => `<div class="service-item">${s}</div>`).join('')
+      const services = Array.isArray(visit.service) ? visit.service : (visit.service ? [visit.service] : []);
+      const servicesHtml = services.length > 0
+        ? services.map((s) => `<div class="service-item">${String(s).replace(/</g, '&lt;')}</div>`).join('')
         : '<div class="service-item">-</div>';
+
+      const formattedDate = formatGeorgianDate(visit.date);
+      const visitDateObj = visit.date ? new Date(visit.date) : null;
+      const formattedTime = visit.time || (visitDateObj && !Number.isNaN(visitDateObj.getTime())
+        ? visitDateObj.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })
+        : '—');
+
+      const dobHtml = visit.patientDateOfBirth
+        ? `<br><small style="color: #666;">დაბადების თარიღი: ${formatGeorgianDate(visit.patientDateOfBirth)}</small>`
+        : '';
+
+      const statusChangedHtml = visit.status_changed_at
+        ? `${formatGeorgianDate(visit.status_changed_at)}, ${new Date(visit.status_changed_at).toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })}`
+        : '';
+
+      const printedAt = `${formatGeorgianDate(new Date())}, ${new Date().toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })}`;
+
+      const notesEscaped = visit.notes ? String(visit.notes).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
 
       const printContent = `
         <!DOCTYPE html>
         <html>
           <head>
+            <meta charset="utf-8" />
             <title>ვიზიტის ინფორმაცია - ${visit.id}</title>
             <style>
-              body {
-                font-family: Arial, sans-serif;
-                padding: 40px;
-                color: #333;
-                max-width: 800px;
-                margin: 0 auto;
-              }
-              .header {
-                text-align: center;
-                margin-bottom: 40px;
-                border-bottom: 3px solid #333;
-                padding-bottom: 20px;
-              }
-              .header h1 {
-                margin: 0;
-                font-size: 28px;
-                font-weight: bold;
-              }
-              .visit-info {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 30px;
-              }
-              .info-section {
-                flex: 1;
-              }
-              .info-section h3 {
-                margin: 0 0 10px 0;
-                font-size: 14px;
-                color: #666;
-                text-transform: uppercase;
-              }
-              .info-section p {
-                margin: 5px 0;
-                font-size: 16px;
-                font-weight: 500;
-              }
-              .visit-details {
-                background-color: #f9f9f9;
-                padding: 20px;
-                border-radius: 8px;
-                margin-bottom: 30px;
-              }
-              .detail-row {
-                display: flex;
-                margin-bottom: 15px;
-                padding-bottom: 15px;
-                border-bottom: 1px solid #ddd;
-              }
-              .detail-row:last-child {
-                border-bottom: none;
-                margin-bottom: 0;
-                padding-bottom: 0;
-              }
-              .detail-label {
-                font-weight: bold;
-                width: 150px;
-                color: #666;
-              }
-              .detail-value {
-                flex: 1;
-                color: #333;
-              }
-              .service-item {
-                padding: 8px 0;
-                border-bottom: 1px solid #eee;
-              }
-              .service-item:last-child {
-                border-bottom: none;
-              }
-              .status-badge {
-                display: inline-block;
-                padding: 6px 12px;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 14px;
-              }
-              .status-pending {
-                background-color: #fef3c7;
-                color: #92400e;
-              }
-              .status-confirmed {
-                background-color: #dbeafe;
-                color: #1e40af;
-              }
-              .status-cancelled {
-                background-color: #fee2e2;
-                color: #991b1b;
-              }
-              .status-completed {
-                background-color: #d1fae5;
-                color: #065f46;
-              }
-              .footer {
-                text-align: center;
-                margin-top: 40px;
-                padding-top: 20px;
-                border-top: 1px solid #ddd;
-                color: #666;
-                font-size: 12px;
-              }
-              @media print {
-                body {
-                  padding: 20px;
-                }
-              }
+              body { font-family: Arial, sans-serif; padding: 40px; color: #333; max-width: 800px; margin: 0 auto; }
+              .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #333; padding-bottom: 20px; }
+              .header h1 { margin: 0; font-size: 28px; font-weight: bold; }
+              .visit-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+              .info-section { flex: 1; }
+              .info-section h3 { margin: 0 0 10px 0; font-size: 14px; color: #666; text-transform: uppercase; }
+              .info-section p { margin: 5px 0; font-size: 16px; font-weight: 500; }
+              .visit-details { background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+              .detail-row { display: flex; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ddd; }
+              .detail-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+              .detail-label { font-weight: bold; width: 170px; color: #666; }
+              .detail-value { flex: 1; color: #333; }
+              .service-item { padding: 8px 0; border-bottom: 1px solid #eee; }
+              .service-item:last-child { border-bottom: none; }
+              .status-badge { display: inline-block; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; }
+              .status-pending { background-color: #fef3c7; color: #92400e; }
+              .status-confirmed { background-color: #dbeafe; color: #1e40af; }
+              .status-cancelled { background-color: #fee2e2; color: #991b1b; }
+              .status-completed { background-color: #d1fae5; color: #065f46; }
+              .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+              @media print { body { padding: 20px; } }
             </style>
           </head>
           <body>
-            <div class="header">
-              <h1>ვიზიტის ინფორმაცია</h1>
-            </div>
-
+            <div class="header"><h1>ვიზიტის ინფორმაცია</h1></div>
             <div class="visit-info">
-              <div class="info-section">
-                <h3>ვიზიტის ID</h3>
-                <p>#${visit.id}</p>
-              </div>
-              <div class="info-section">
-                <h3>სტატუსი</h3>
-                <p>
-                  <span class="status-badge status-${(visit.status || 'pending').toLowerCase()}">
-                    ${getStatusLabel(visit.status)}
-                  </span>
-                </p>
-              </div>
+              <div class="info-section"><h3>ვიზიტის ID</h3><p>#${visit.id}</p></div>
+              <div class="info-section"><h3>სტატუსი</h3><p>
+                <span class="status-badge status-${(visit.status || 'PENDING').toLowerCase()}">${getStatusLabel(visit.status)}</span>
+              </p></div>
             </div>
-
             <div class="visit-details">
               <div class="detail-row">
                 <div class="detail-label">პაციენტი:</div>
                 <div class="detail-value">
-                  ${visit.patientName || '-'}
-                  ${visit.patientIdNumber ? `<br><small style="color: #666;">პ/ნ: ${visit.patientIdNumber}</small>` : ''}
+                  ${String(visit.patientName || '—').replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                  ${visit.patientIdNumber ? `<br><small style="color: #666;">პ/ნ: ${String(visit.patientIdNumber).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</small>` : ''}
+                  ${dobHtml}
                 </div>
               </div>
-              <div class="detail-row">
-                <div class="detail-label">ექიმი:</div>
-                <div class="detail-value">${visit.doctorName || '-'}</div>
-              </div>
-              ${visit.department ? `
-              <div class="detail-row">
-                <div class="detail-label">განყოფილება:</div>
-                <div class="detail-value">${visit.department}</div>
-              </div>
-              ` : ''}
-              <div class="detail-row">
-                <div class="detail-label">თარიღი:</div>
-                <div class="detail-value">${formattedDate}</div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">დრო:</div>
-                <div class="detail-value">${formattedTime}</div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">სერვისები:</div>
-                <div class="detail-value">
-                  ${servicesHtml}
-                </div>
-              </div>
-              ${visit.notes ? `
-              <div class="detail-row">
-                <div class="detail-label">შენიშვნა:</div>
-                <div class="detail-value">${visit.notes}</div>
-              </div>
-              ` : ''}
-              ${visit.status_changed_at ? `
-              <div class="detail-row">
-                <div class="detail-label">სტატუსის შეცვლა:</div>
-                <div class="detail-value">
-                  ${new Date(visit.status_changed_at).toLocaleDateString('ka-GE', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </div>
-              </div>
-              ` : ''}
+              <div class="detail-row"><div class="detail-label">ექიმი:</div><div class="detail-value">${String(visit.doctorName || '—').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div></div>
+              ${visit.department ? `<div class="detail-row"><div class="detail-label">განყოფილება:</div><div class="detail-value">${String(visit.department).replace(/</g, '&lt;')}</div></div>` : ''}
+              <div class="detail-row"><div class="detail-label">თარიღი:</div><div class="detail-value">${formattedDate}</div></div>
+              <div class="detail-row"><div class="detail-label">დრო:</div><div class="detail-value">${formattedTime}</div></div>
+              <div class="detail-row"><div class="detail-label">სერვისები:</div><div class="detail-value">${servicesHtml}</div></div>
+              ${visit.notes ? `<div class="detail-row"><div class="detail-label">შენიშვნა:</div><div class="detail-value">${notesEscaped}</div></div>` : ''}
+              ${visit.status_changed_at ? `<div class="detail-row"><div class="detail-label">სტატუსის შეცვლა:</div><div class="detail-value">${statusChangedHtml}</div></div>` : ''}
             </div>
-
-            <div class="footer">
-              <p>დაბეჭდილია: ${new Date().toLocaleDateString('ka-GE', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}</p>
-            </div>
+            <div class="footer"><p>დაბეჭდილია: ${printedAt}</p></div>
           </body>
         </html>
       `;
-      
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        return;
+      }
       printWindow.document.write(printContent);
       printWindow.document.close();
-      
       setTimeout(() => {
         printWindow.print();
       }, 250);

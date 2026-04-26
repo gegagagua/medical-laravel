@@ -32,12 +32,33 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div>
         <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-          ელ. ფოსტა
+          დაბადების თარიღი
         </label>
         <p class="text-lg text-gray-900 dark:text-white">
+          {{ formatGeorgianDate(patient.date_of_birth) }}
+        </p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+          კოდი
+        </label>
+        <p class="text-lg text-gray-900 dark:text-white font-mono">
+          {{ patient.gegas_code || '—' }}
+        </p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+          ელ. ფოსტა
+        </label>
+        <p v-if="patient.email" class="text-lg text-gray-900 dark:text-white">
           <a :href="`mailto:${patient.email}`" class="text-blue-600 hover:text-blue-800 dark:text-blue-400">
             {{ patient.email }}
           </a>
+        </p>
+        <p v-else class="text-lg text-gray-500 dark:text-gray-400">
+          —
         </p>
       </div>
 
@@ -57,7 +78,7 @@
           რეგისტრაციის თარიღი
         </label>
         <p class="text-lg text-gray-900 dark:text-white">
-          {{ formatDate(patient.created_at) }}
+          {{ formatGeorgianDate(patient.created_at) }}
         </p>
       </div>
     </div>
@@ -66,6 +87,7 @@
 
 <script>
 import Button from './ui/Button.vue';
+import { formatGeorgianDate } from '../utils/georgianDate';
 
 export default {
   name: 'PatientInfoCard',
@@ -80,15 +102,7 @@ export default {
   },
   emits: ['print', 'add-visit'],
   methods: {
-    formatDate(date) {
-      if (!date) return '-';
-      const d = new Date(date);
-      return d.toLocaleDateString('ka-GE', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-    },
+    formatGeorgianDate,
     getRoleLabel(role) {
       const roles = {
         'ADMIN': 'ადმინისტრატორი',

@@ -15,6 +15,7 @@ class Patient extends Model
         'age',
         'gender',
         'phone',
+        'email',
         'address',
         'diagnosis',
         'status',

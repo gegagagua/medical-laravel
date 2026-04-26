@@ -39,10 +39,11 @@ class PatientController extends Controller
             'last_name' => $p->last_name,
             'id_number' => $p->id_number,
             'gegas_code' => $p->gegas_code,
-            'date_of_birth' => $p->date_of_birth?->toISOString(),
+            'date_of_birth' => $p->date_of_birth?->format('Y-m-d'),
             'age' => $p->age,
             'gender' => $p->gender,
             'phone' => $p->phone,
+            'email' => $p->email,
             'diagnosis' => $p->diagnosis,
             'status' => $p->status,
             'last_visit_at' => $p->last_visit_at?->toISOString(),
@@ -59,6 +60,7 @@ class PatientController extends Controller
             'date_of_birth' => 'required|date|before:today',
             'gender' => 'required|in:male,female',
             'phone' => 'nullable|string|max:30',
+            'email' => 'nullable|string|email|max:255',
             'diagnosis' => 'nullable|string|max:255',
             'status' => 'required|in:active,inactive',
         ]);
@@ -90,6 +92,7 @@ class PatientController extends Controller
             'date_of_birth' => 'required|date|before:today',
             'gender' => 'required|in:male,female',
             'phone' => 'nullable|string|max:30',
+            'email' => 'nullable|string|email|max:255',
             'diagnosis' => 'nullable|string|max:255',
             'status' => 'required|in:active,inactive',
         ]);
