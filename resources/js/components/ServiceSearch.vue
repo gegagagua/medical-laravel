@@ -117,12 +117,12 @@ export default {
   },
   computed: {
     filteredServices() {
-      if (!this.department) {
-        return [];
+      let services = this.services;
+      if (this.department) {
+        services = services.filter(service =>
+          service.department === this.department
+        );
       }
-      let services = this.services.filter(service => 
-        service.department === this.department
-      );
       
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();

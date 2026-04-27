@@ -247,7 +247,10 @@ export default {
             const dob = item.patientDateOfBirth
               ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">დაბადების თარიღი: ${formatGeorgianDate(item.patientDateOfBirth)}</div>`
               : '';
-            return `<div><div class="font-medium text-gray-900 dark:text-white">${value}</div>${idNumber}${dob}</div>`;
+            const phone = item.patientPhone ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">ტელ: ${item.patientPhone}</div>` : '';
+            const ageValue = Number.isFinite(Number(item.patientAge)) ? Math.floor(Math.abs(Number(item.patientAge))) : null;
+            const age = ageValue !== null ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">ასაკი: ${ageValue}</div>` : '';
+            return `<div><div class="font-medium text-gray-900 dark:text-white">${value}</div>${idNumber}${dob}${phone}${age}</div>`;
           }
         },
         {

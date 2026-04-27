@@ -10,7 +10,7 @@ class AppointmentController extends Controller
 {
     public function index(Request $request)
     {
-        $appointments = Appointment::with('patient:id,first_name,last_name,id_number,date_of_birth')
+        $appointments = Appointment::with('patient:id,first_name,last_name,id_number,date_of_birth,phone')
             ->orderBy('date', 'desc')
             ->get();
 
@@ -22,6 +22,8 @@ class AppointmentController extends Controller
                 'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
                 'patientIdNumber' => $appointment->patient->id_number ?? null,
                 'patientDateOfBirth' => $appointment->patient->date_of_birth?->format('Y-m-d'),
+                'patientPhone' => $appointment->patient->phone ?? null,
+                'patientAge' => $appointment->patient->age,
                 'doctor_id' => $appointment->doctor_id,
                 'doctorName' => $appointment->doctor_name,
                 'department' => $appointment->department,
@@ -41,7 +43,7 @@ class AppointmentController extends Controller
 
     public function show($id)
     {
-        $appointment = Appointment::with('patient:id,first_name,last_name,id_number,date_of_birth')->findOrFail($id);
+        $appointment = Appointment::with('patient:id,first_name,last_name,id_number,date_of_birth,phone')->findOrFail($id);
 
         return response()->json([
             'id' => $appointment->id,
@@ -49,6 +51,8 @@ class AppointmentController extends Controller
             'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
             'patientIdNumber' => $appointment->patient->id_number ?? null,
             'patientDateOfBirth' => $appointment->patient->date_of_birth?->format('Y-m-d'),
+            'patientPhone' => $appointment->patient->phone ?? null,
+            'patientAge' => $appointment->patient->age,
             'doctor_id' => $appointment->doctor_id,
             'doctorName' => $appointment->doctor_name,
             'department' => $appointment->department,
@@ -103,13 +107,15 @@ class AppointmentController extends Controller
             'notes' => $validated['notes'] ?? null,
         ]);
 
-        $appointment->load('patient:id,first_name,last_name,id_number,date_of_birth');
+        $appointment->load('patient:id,first_name,last_name,id_number,date_of_birth,phone');
 
         return response()->json([
             'id' => $appointment->id,
             'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
             'patientIdNumber' => $appointment->patient->id_number ?? null,
             'patientDateOfBirth' => $appointment->patient->date_of_birth?->format('Y-m-d'),
+            'patientPhone' => $appointment->patient->phone ?? null,
+            'patientAge' => $appointment->patient->age,
             'doctorName' => $appointment->doctor_name,
             'department' => $appointment->department,
             'service' => $appointment->service,

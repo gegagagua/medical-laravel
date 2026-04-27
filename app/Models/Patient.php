@@ -43,18 +43,12 @@ class Patient extends Model
 
     public static function nextNumericGegasCode(): string
     {
-        $max = 0;
-        static::query()
+        $lastNumericCode = static::query()
             ->whereNotNull('gegas_code')
-            ->lockForUpdate()
-            ->cursor()
-            ->each(function (Patient $patient) use (&$max) {
-                $c = trim((string) $patient->gegas_code);
-                if ($c !== '' && ctype_digit($c)) {
-                    $max = max($max, (int) $c);
-                }
-            });
+            ->whereRaw("TRIM(gegas_code) REGEXP '^[0-9]+$'")
+            ->selectRaw('MAX(CAST(TRIM(gegas_code) AS UNSIGNED)) as max_code')
+            ->value('max_code');
 
-        return (string) ($max + 1);
+        return (string) (((int) $lastNumericCode) + 1);
     }
 }

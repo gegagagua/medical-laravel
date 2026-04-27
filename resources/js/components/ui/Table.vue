@@ -30,14 +30,15 @@
     </div>
 
     <!-- Table -->
-    <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-      <table class="w-full text-left">
+    <div :class="tableContainerClass">
+      <table :class="tableClass">
         <thead class="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <tr>
             <th
               v-for="column in columns"
               :key="column.key"
               class="px-4 py-3 text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider"
+              :class="wrapCells ? 'whitespace-normal break-words' : ''"
               :style="{ width: column.width }"
             >
               <button
@@ -98,7 +99,8 @@
             <td
               v-for="column in columns"
               :key="column.key"
-              class="px-4 py-4 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap"
+              class="px-4 py-4 text-sm text-gray-900 dark:text-gray-100"
+              :class="wrapCells ? 'whitespace-normal break-words align-top' : 'whitespace-nowrap'"
             >
               <component
                 :is="column.render ? 'span' : 'span'"
@@ -199,6 +201,10 @@ export default {
     onRowClick: {
       type: Function,
       default: null
+    },
+    wrapCells: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -302,6 +308,18 @@ export default {
     },
     hasActiveFilters() {
       return this.searchQuery || Object.values(this.columnFilters).some(v => v);
+    },
+    tableContainerClass() {
+      return [
+        'rounded-lg border border-gray-200 dark:border-gray-700',
+        this.wrapCells ? 'overflow-x-hidden' : 'overflow-x-auto'
+      ];
+    },
+    tableClass() {
+      return [
+        'w-full text-left',
+        this.wrapCells ? 'table-fixed' : ''
+      ];
     }
   },
   watch: {

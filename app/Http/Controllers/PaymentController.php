@@ -180,6 +180,74 @@ class PaymentController extends Controller
         return response()->json($payments);
     }
 
+    public function update(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'service' => 'nullable|string|required_without:services',
+            'services' => 'nullable|array|required_without:service',
+            'services.*.name' => 'required|string',
+            'services.*.price' => 'nullable|numeric|min:0',
+            'services.*.discount' => 'nullable|numeric|min:0|max:100',
+            'amount' => 'required|numeric|min:0',
+            'payment_method' => 'required|in:cash,card,transfer',
+        ]);
+
+        $serviceNames = collect($validated['services'] ?? [])
+            ->map(fn ($service) => trim((string) ($service['name'] ?? '')))
+            ->filter()
+            ->values();
+        $serviceValue = $serviceNames->isNotEmpty()
+            ? $serviceNames->implode(', ')
+            : trim((string) ($validated['service'] ?? ''));
+
+        $servicesDiscounts = null;
+        if (isset($validated['services']) && is_array($validated['services'])) {
+            $servicesDiscounts = collect($validated['services'])
+                ->map(function ($service) {
+                    return [
+                        'name' => (string) ($service['name'] ?? ''),
+                        'price' => (float) ($service['price'] ?? 0),
+                        'discount' => (float) ($service['discount'] ?? 0),
+                    ];
+                })
+                ->values()
+                ->all();
+        }
+
+        $payment = Payment::with('patient:id,first_name,last_name,id_number,date_of_birth')->findOrFail($id);
+        $payment->update([
+            'service' => $serviceValue,
+            'amount' => $validated['amount'],
+            'has_discount' => false,
+            'discount_percentage' => null,
+            'services_discounts' => $servicesDiscounts,
+            'payment_method' => $validated['payment_method'],
+        ]);
+
+        return response()->json([
+            'id' => $payment->id,
+            'invoiceNumber' => $payment->invoice_number,
+            'patientId' => $payment->patient_id,
+            'appointmentId' => $payment->appointment_id,
+            'patientName' => $payment->patient
+                ? ($payment->patient->first_name.' '.$payment->patient->last_name)
+                : '—',
+            'patientIdNumber' => $payment->patient?->id_number,
+            'patientDateOfBirth' => $payment->patient?->date_of_birth?->toISOString(),
+            'service' => $payment->service,
+            'doctor' => $payment->doctor,
+            'amount' => $payment->amount,
+            'hasDiscount' => $payment->has_discount ?? false,
+            'discountPercentage' => $payment->discount_percentage,
+            'servicesDiscounts' => $payment->services_discounts,
+            'date' => $payment->payment_date?->format('Y-m-d'),
+            'paymentMethod' => $payment->payment_method,
+            'status' => $payment->status,
+            'created_at' => $payment->created_at?->format('Y-m-d H:i:s'),
+            'message' => 'Payment updated successfully',
+        ]);
+    }
+
     public function destroy($id)
     {
         $payment = Payment::findOrFail($id);

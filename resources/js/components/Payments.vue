@@ -197,11 +197,72 @@
             :columns="columns"
             :page-size="10"
             :searchable="true"
+            :wrap-cells="true"
             search-placeholder="მოძებნეთ გადახდა (ინვოისი, პაციენტი, სერვისი)..."
             empty-message="გადახდები არ მოიძებნა"
             :loading="loading"
           />
       </div>
+
+      <Modal :isOpen="isEditModalOpen" title="გადახდის რედაქტირება" @close="closeEditModal">
+        <form @submit.prevent="handleEditSubmit" class="space-y-4">
+          <div class="p-3 bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 rounded-lg">
+            <p class="text-sm text-gray-600 dark:text-gray-300">პაციენტი</p>
+            <p class="text-sm font-semibold text-gray-900 dark:text-white mt-1">{{ editFormData.patientName || '—' }}</p>
+          </div>
+
+          <div v-if="editFormData.department" class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p class="text-sm text-blue-800 dark:text-blue-200">
+              განყოფილება: <span class="font-semibold">{{ editFormData.department }}</span>
+            </p>
+          </div>
+
+          <ServiceSearch
+            v-model="editFormData.services"
+            :services="services"
+            :department="editFormData.department"
+            placeholder="მოძებნეთ სერვისები..."
+          />
+
+          <Input
+            v-model="editFormData.amount"
+            type="number"
+            step="0.01"
+            min="0"
+            label="ჯამური თანხა (₾)"
+            placeholder="0.00"
+            required
+          />
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              გადახდის მეთოდი
+            </label>
+            <select
+              v-model="editFormData.payment_method"
+              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              required
+            >
+              <option value="cash">ნაღდი</option>
+              <option value="card">ბარათი</option>
+              <option value="transfer">გადარიცხვა</option>
+            </select>
+          </div>
+
+          <div v-if="editError" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p class="text-sm text-red-800 dark:text-red-300">{{ editError }}</p>
+          </div>
+
+          <div class="flex gap-3 pt-4">
+            <Button type="button" variant="secondary" @click="closeEditModal" :full-width="true">
+              გაუქმება
+            </Button>
+            <Button type="submit" variant="primary" :full-width="true" :disabled="editSubmitting">
+              {{ editSubmitting ? 'იტვირთება...' : 'შენახვა' }}
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       <!-- Add Payment Modal -->
       <Modal :isOpen="isModalOpen" title="ახალი გადახდის დამატება" @close="closeModal">
@@ -325,6 +386,7 @@ import Table from './ui/Table.vue';
 import Button from './ui/Button.vue';
 import Modal from './ui/Modal.vue';
 import Input from './ui/Input.vue';
+import ServiceSearch from './ServiceSearch.vue';
 
 export default {
   name: 'Payments',
@@ -333,7 +395,8 @@ export default {
     Table,
     Button,
     Modal,
-    Input
+    Input,
+    ServiceSearch
   },
   setup() {
     const toastStore = useToastStore();
@@ -349,11 +412,16 @@ export default {
       patients: [],
       patientsLoading: false,
       doctorUsers: [],
+      services: [],
       pdfFiles: [],
       loading: true,
       isModalOpen: false,
+      isEditModalOpen: false,
       submitting: false,
+      editSubmitting: false,
       error: '',
+      editError: '',
+      editingPaymentId: null,
       filters: {
         datePreset: 'today',
         dateFrom: today,
@@ -371,13 +439,20 @@ export default {
         payment_method: 'cash',
         status: 'pending'
       },
+      editFormData: {
+        patientName: '',
+        department: '',
+        services: [],
+        amount: '',
+        payment_method: 'cash'
+      },
       columns: [
         {
           key: 'invoiceNumber',
           label: 'ინვოისი',
           sortable: true,
           filterable: true,
-          width: '130px',
+          width: '100px',
           render: (value) => `<span class="font-mono font-semibold text-blue-600 dark:text-blue-400 text-sm">${value}</span>`
         },
         {
@@ -385,7 +460,7 @@ export default {
           label: 'პაციენტი',
           sortable: true,
           filterable: true,
-          width: '180px',
+          width: '140px',
           render: (value, item) => {
             const idNumber = item.patientIdNumber ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">პ/ნ: ${item.patientIdNumber}</div>` : '';
             return `<div><div class="font-medium text-gray-900 dark:text-white">${value}</div>${idNumber}</div>`;
@@ -396,7 +471,7 @@ export default {
           label: 'ექიმი',
           sortable: true,
           filterable: true,
-          width: '160px',
+          width: '120px',
           render: (value) => value ? `<span class="text-sm font-medium text-blue-600 dark:text-blue-400">${value}</span>` : `<span class="text-sm text-gray-400 dark:text-gray-500">-</span>`
         },
         {
@@ -404,7 +479,7 @@ export default {
           label: 'განყოფილება',
           sortable: true,
           filterable: true,
-          width: '150px',
+          width: '120px',
           render: (value) => value ? `<span class="text-sm text-gray-800 dark:text-gray-200">${value}</span>` : `<span class="text-sm text-gray-400 dark:text-gray-500">-</span>`
         },
         {
@@ -412,7 +487,7 @@ export default {
           label: 'სერვისი',
           sortable: true,
           filterable: true,
-          width: '200px',
+          width: '150px',
           render: (value, item) => {
             let html = `<div class="text-sm text-gray-600 dark:text-gray-400">`;
             
@@ -449,7 +524,7 @@ export default {
           key: 'amount',
           label: 'თანხა',
           sortable: true,
-          width: '100px',
+          width: '90px',
           render: (value) => `<span class="font-bold text-green-600 dark:text-green-400 text-sm">₾${Number(value).toFixed(2)}</span>`
         },
         {
@@ -457,7 +532,7 @@ export default {
           label: 'მეთოდი / სტატუსი',
           sortable: true,
           filterable: true,
-          width: '140px',
+          width: '120px',
           render: (value, item) => {
             const methods = {
               cash: { label: 'ნაღდი', class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
@@ -482,7 +557,7 @@ export default {
           key: 'date',
           label: 'თარიღი',
           sortable: true,
-          width: '140px',
+          width: '120px',
           render: (value, item) => {
             const dateText = typeof value === 'string' ? value.slice(0, 10) : '';
             const dateSource = /^\d{4}-\d{2}-\d{2}$/.test(dateText) ? `${dateText}T00:00:00` : '';
@@ -503,10 +578,20 @@ export default {
           key: 'actions',
           label: 'მოქმედებები',
           sortable: false,
-          width: '200px',
+          width: '150px',
           render: (value, item) => {
             return `
               <div class="flex flex-wrap justify-center gap-1.5" onclick="event.stopPropagation()">
+                <button
+                  onclick="window.editPayment(${item.id}); return false;"
+                  class="px-2.5 py-1 text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition cursor-pointer inline-flex items-center gap-1"
+                  title="რედაქტირება"
+                >
+                  <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  რედაქტირება
+                </button>
                 <button
                   onclick="window.printPayment(${item.id}); return false;"
                   class="px-2.5 py-1 text-xs sm:text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition cursor-pointer inline-flex items-center gap-1"
@@ -611,15 +696,18 @@ export default {
     this.fetchPayments();
     this.fetchPatients();
     this.fetchDoctors();
+    this.fetchServices();
     this.fetchPdfFiles();
     const now = new Date();
     this.formData.payment_date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     // Make print method available globally for table actions
     window.printPayment = (id) => this.printPayment(id);
+    window.editPayment = (id) => this.openEditModal(id);
     window.deletePayment = (id) => this.deletePayment(id);
   },
   beforeUnmount() {
     delete window.printPayment;
+    delete window.editPayment;
     delete window.deletePayment;
   },
   methods: {
@@ -728,6 +816,18 @@ export default {
       } catch (error) {
         console.error('Failed to fetch doctors:', error);
         this.doctorUsers = [];
+      }
+    },
+    async fetchServices() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get('/api/services', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        this.services = Array.isArray(response.data) ? response.data : [];
+      } catch (error) {
+        console.error('Failed to fetch services:', error);
+        this.services = [];
       }
     },
     async fetchPdfFiles() {
@@ -1299,6 +1399,129 @@ export default {
     closeModal() {
       this.isModalOpen = false;
       this.error = '';
+    },
+    buildEditServices(payment) {
+      const namesFromDiscounts = Array.isArray(payment?.servicesDiscounts)
+        ? payment.servicesDiscounts
+          .map((service) => String(service?.name || '').trim())
+          .filter(Boolean)
+        : [];
+      const names = namesFromDiscounts.length > 0
+        ? namesFromDiscounts
+        : String(payment?.service || '')
+          .split(',')
+          .map((name) => name.trim())
+          .filter(Boolean);
+
+      if (names.length === 0) {
+        return [];
+      }
+
+      return names.map((name, index) => {
+        const found = this.services.find((service) => String(service?.name || '').trim().toLowerCase() === name.toLowerCase());
+        if (found) {
+          return found;
+        }
+        return {
+          id: `custom-${index}-${name}`,
+          name,
+          price: 0,
+          department: payment?.department || ''
+        };
+      });
+    },
+    parseAmount(value) {
+      if (value === null || value === undefined || value === '') {
+        return NaN;
+      }
+      const normalized = String(value).trim().replace(/\s/g, '').replace(',', '.');
+      const amount = Number.parseFloat(normalized);
+      return Number.isFinite(amount) ? amount : NaN;
+    },
+    async openEditModal(paymentId) {
+      const payment = this.allPayments.find(p => p.id === paymentId);
+      if (!payment) {
+        this.toastStore.warning('გადახდა ვერ მოიძებნა');
+        return;
+      }
+
+      if (!this.services.length) {
+        await this.fetchServices();
+      }
+
+      this.editingPaymentId = payment.id;
+      this.editFormData = {
+        patientName: payment.patientName || '',
+        department: payment.department || '',
+        services: this.buildEditServices(payment),
+        amount: payment.amount != null ? String(payment.amount) : '',
+        payment_method: payment.paymentMethod || 'cash'
+      };
+      this.editError = '';
+      this.isEditModalOpen = true;
+    },
+    closeEditModal() {
+      this.isEditModalOpen = false;
+      this.editError = '';
+      this.editSubmitting = false;
+      this.editingPaymentId = null;
+    },
+    async handleEditSubmit() {
+      if (this.editSubmitting || this.editingPaymentId == null) {
+        return;
+      }
+
+      if (!this.editFormData.payment_method || this.editFormData.amount === '') {
+        this.editError = 'გთხოვთ შეავსოთ ყველა აუცილებელი ველი';
+        return;
+      }
+
+      const selectedServices = Array.isArray(this.editFormData.services) ? this.editFormData.services : [];
+      if (selectedServices.length === 0) {
+        this.editError = 'გთხოვთ აირჩიოთ მინიმუმ ერთი სერვისი';
+        return;
+      }
+
+      const serviceNames = selectedServices
+        .map((service) => String(service?.name || '').trim())
+        .filter(Boolean);
+      if (serviceNames.length === 0) {
+        this.editError = 'გთხოვთ აირჩიოთ მინიმუმ ერთი სერვისი';
+        return;
+      }
+
+      const amount = this.parseAmount(this.editFormData.amount);
+      if (!Number.isFinite(amount) || amount < 0) {
+        this.editError = 'თანხა არ შეიძლება იყოს უარყოფითი';
+        return;
+      }
+
+      this.editSubmitting = true;
+      this.editError = '';
+
+      try {
+        const token = localStorage.getItem('auth_token');
+        await axios.patch(`/api/payments/${this.editingPaymentId}`, {
+          service: serviceNames.join(', '),
+          services: selectedServices.map((service) => ({
+            name: service.name,
+            price: service.price ?? 0,
+            discount: 0
+          })),
+          amount,
+          payment_method: this.editFormData.payment_method
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        this.toastStore.success('გადახდა განახლდა');
+        await this.fetchPayments();
+        this.closeEditModal();
+      } catch (error) {
+        this.editError = error.response?.data?.message || 'გადახდის განახლება ვერ მოხერხდა';
+      } finally {
+        this.editSubmitting = false;
+      }
     },
     async handleSubmit() {
       if (this.submitting) {

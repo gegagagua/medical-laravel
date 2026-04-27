@@ -59,6 +59,7 @@ Route::prefix('payments')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [PaymentController::class, 'index']);
     Route::get('/by-doctor', [PaymentController::class, 'byDoctor']);
     Route::post('/', [PaymentController::class, 'store']);
+    Route::patch('/{id}', [PaymentController::class, 'update']);
     Route::delete('/{id}', [PaymentController::class, 'destroy']);
 });
 
