@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Patient;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -57,6 +58,7 @@ class PatientController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'id_number' => 'required|string|max:20|unique:patients,id_number',
+            'gegas_code' => 'nullable|string|max:32',
             'date_of_birth' => 'required|date|before:today',
             'gender' => 'required|in:male,female',
             'phone' => 'nullable|string|max:30',
@@ -65,15 +67,32 @@ class PatientController extends Controller
             'status' => 'required|in:active,inactive',
         ]);
 
-        $patient = DB::transaction(function () use ($validated) {
-            Patient::query()->orderByDesc('id')->limit(1)->lockForUpdate()->first();
+        $requestedCode = isset($validated['gegas_code']) ? trim((string) $validated['gegas_code']) : '';
+        if ($requestedCode !== '') {
+            $existingPatient = Patient::query()->where('gegas_code', $requestedCode)->first();
+            if ($existingPatient) {
+                return $this->gegasCodeTakenResponse($requestedCode);
+            }
+        }
 
-            $dateOfBirth = \Carbon\Carbon::parse($validated['date_of_birth']);
-            $validated['age'] = $dateOfBirth->age;
-            $validated['gegas_code'] = Patient::nextNumericGegasCode();
+        try {
+            $patient = DB::transaction(function () use ($validated) {
+                Patient::query()->orderByDesc('id')->limit(1)->lockForUpdate()->first();
 
-            return Patient::create($validated);
-        });
+                $dateOfBirth = \Carbon\Carbon::parse($validated['date_of_birth']);
+                $validated['age'] = $dateOfBirth->age;
+                $validated['gegas_code'] = ! empty($validated['gegas_code'])
+                    ? trim((string) $validated['gegas_code'])
+                    : Patient::nextNumericGegasCode();
+
+                return Patient::create($validated);
+            });
+        } catch (QueryException $exception) {
+            if ($this->isGegasCodeUniqueViolation($exception)) {
+                return $this->gegasCodeTakenResponse($requestedCode);
+            }
+            throw $exception;
+        }
 
         return response()->json([
             'message' => 'Patient created successfully',
@@ -89,6 +108,7 @@ class PatientController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'id_number' => 'required|string|max:20|unique:patients,id_number,'.$id,
+            'gegas_code' => 'nullable|string|max:32',
             'date_of_birth' => 'required|date|before:today',
             'gender' => 'required|in:male,female',
             'phone' => 'nullable|string|max:30',
@@ -97,11 +117,29 @@ class PatientController extends Controller
             'status' => 'required|in:active,inactive',
         ]);
 
+        $requestedCode = isset($validated['gegas_code']) ? trim((string) $validated['gegas_code']) : '';
+        if ($requestedCode !== '') {
+            $existingPatient = Patient::query()
+                ->where('gegas_code', $requestedCode)
+                ->where('id', '!=', $id)
+                ->first();
+            if ($existingPatient) {
+                return $this->gegasCodeTakenResponse($requestedCode, (int) $id);
+            }
+        }
+
         // Calculate age from date of birth
         $dateOfBirth = \Carbon\Carbon::parse($validated['date_of_birth']);
         $validated['age'] = $dateOfBirth->age;
 
-        $patient->update($validated);
+        try {
+            $patient->update($validated);
+        } catch (QueryException $exception) {
+            if ($this->isGegasCodeUniqueViolation($exception)) {
+                return $this->gegasCodeTakenResponse($requestedCode, (int) $id);
+            }
+            throw $exception;
+        }
 
         return response()->json([
             'message' => 'Patient updated successfully',
@@ -117,5 +155,36 @@ class PatientController extends Controller
         return response()->json([
             'message' => 'Patient deleted successfully',
         ]);
+    }
+
+    private function isGegasCodeUniqueViolation(QueryException $exception): bool
+    {
+        $message = strtolower((string) $exception->getMessage());
+        $driverCode = (int) ($exception->errorInfo[1] ?? 0);
+
+        if ($driverCode === 1062 && str_contains($message, 'gegas_code')) {
+            return true;
+        }
+
+        return str_contains($message, 'patients_gegas_code_unique');
+    }
+
+    private function gegasCodeTakenResponse(string $code, ?int $excludePatientId = null)
+    {
+        $query = Patient::query()->where('gegas_code', $code);
+        if ($excludePatientId !== null) {
+            $query->where('id', '!=', $excludePatientId);
+        }
+        $existingPatient = $query->first();
+
+        if ($existingPatient) {
+            return response()->json([
+                'message' => 'კოდი უკვე გამოყენებულია სხვა პაციენტზე ('.$existingPatient->first_name.' '.$existingPatient->last_name.')',
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'კოდი უკვე გამოყენებულია სხვა პაციენტზე',
+        ], 422);
     }
 }

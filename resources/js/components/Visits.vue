@@ -72,9 +72,12 @@
             <p class="text-gray-600 dark:text-gray-400">
               ყველა დაგეგმილი და დასრულებული ვიზიტი
             </p>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              როლი: <span class="font-semibold">{{ currentUserRoleLabel }}</span>
+            </p>
           </div>
           <Button 
-            v-if="authStore.userRole !== 'LABOR'"
+            v-if="currentUserRole !== 'LABOR'"
             variant="primary"
             @click="createNewVisit"
           >
@@ -162,6 +165,126 @@
         />
       </div>
 
+      <Modal :isOpen="isEditModalOpen" title="ვიზიტის რედაქტირება" @close="closeEditVisitModal">
+        <form @submit.prevent="handleVisitEditSubmit" class="space-y-4">
+          <div class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p class="text-sm text-blue-800 dark:text-blue-200">
+              პაციენტი: <span class="font-semibold">{{ editVisitForm.patientName || '—' }}</span>
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              განყოფილება *
+            </label>
+            <select
+              v-model="editVisitForm.department"
+              @change="handleEditDepartmentChange"
+              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">აირჩიეთ განყოფილება</option>
+              <option value="ენდოკრინოლოგია">ენდოკრინოლოგია</option>
+              <option value="ბავშვთა და მოზრდილთა ენდოკრინოლოგია">ბავშვთა და მოზრდილთა ენდოკრინოლოგია</option>
+              <option value="ექიმი">ექიმი</option>
+              <option value="რადიოლოგია">რადიოლოგია</option>
+              <option value="ოფთალმოლოგია">ოფთალმოლოგია</option>
+              <option value="ნევროლოგია">ნევროლოგია</option>
+              <option value="კარდიოლოგია">კარდიოლოგია</option>
+              <option value="ტრავმატოლოგია">ტრავმატოლოგია</option>
+              <option value="ოტორინოლარინგოლოგია">ოტორინოლარინგოლოგია</option>
+              <option value="ლაბორატორია">ლაბორატორია</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              ექიმი / მედპერ. *
+            </label>
+            <select
+              v-model="editVisitForm.doctor_id"
+              @change="updateEditDoctorName"
+              :disabled="!editVisitForm.department"
+              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:dark:bg-gray-800 disabled:cursor-not-allowed"
+              required
+            >
+              <option value="">{{ editVisitForm.department ? 'აირჩიეთ ექიმი' : 'ჯერ აირჩიეთ განყოფილება' }}</option>
+              <option
+                v-for="user in editDepartmentDoctors"
+                :key="user.id"
+                :value="user.id"
+              >
+                {{ user.first_name }} {{ user.last_name }}
+              </option>
+            </select>
+          </div>
+
+          <ServiceSearch
+            v-model="editVisitForm.services"
+            :services="services"
+            :department="editVisitForm.department"
+            :disabled="!editVisitForm.department"
+            placeholder="მოძებნეთ სერვისები..."
+          />
+
+          <div class="grid grid-cols-2 gap-4">
+            <Input
+              v-model="editVisitForm.date"
+              type="date"
+              label="თარიღი *"
+              required
+            />
+            <Input
+              v-model="editVisitForm.time"
+              type="time"
+              label="მიღების საათი *"
+              required
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              სტატუსი *
+            </label>
+            <select
+              v-model="editVisitForm.status"
+              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="PENDING">მოლოდინში</option>
+              <option value="CONFIRMED">დადასტურებული</option>
+              <option value="CANCELLED">გაუქმებული</option>
+              <option value="COMPLETED">დასრულებული</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              შენიშვნა
+            </label>
+            <textarea
+              v-model="editVisitForm.notes"
+              rows="3"
+              placeholder="დამატებითი ინფორმაცია..."
+              class="block w-full py-3 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            ></textarea>
+          </div>
+
+          <div v-if="editError" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p class="text-sm text-red-800 dark:text-red-300">{{ editError }}</p>
+          </div>
+
+          <div class="flex gap-3 pt-4">
+            <Button type="button" variant="secondary" @click="closeEditVisitModal" :full-width="true">
+              გაუქმება
+            </Button>
+            <Button type="submit" variant="primary" :full-width="true" :disabled="editSubmitting">
+              {{ editSubmitting ? 'ინახება...' : 'შენახვა' }}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
       <!-- Payment Modal -->
       <PaymentModal
         ref="paymentModalRef"
@@ -185,6 +308,9 @@ import { formatGeorgianDate } from '../utils/georgianDate';
 import Navbar from './Navbar.vue';
 import Table from './ui/Table.vue';
 import Button from './ui/Button.vue';
+import Modal from './ui/Modal.vue';
+import Input from './ui/Input.vue';
+import ServiceSearch from './ServiceSearch.vue';
 import PaymentModal from './PaymentModal.vue';
 
 export default {
@@ -193,6 +319,9 @@ export default {
     Navbar,
     Table,
     Button,
+    Modal,
+    Input,
+    ServiceSearch,
     PaymentModal
   },
   setup() {
@@ -206,6 +335,21 @@ export default {
       allAppointments: [],
       patients: [],
       loading: true,
+      isEditModalOpen: false,
+      editSubmitting: false,
+      editError: '',
+      editingVisitId: null,
+      editVisitForm: {
+        patientName: '',
+        department: '',
+        doctor_id: '',
+        doctor_name: '',
+        services: [],
+        date: '',
+        time: '',
+        status: 'PENDING',
+        notes: ''
+      },
       isPaymentModalOpen: false,
       selectedPatient: null,
       doctorUsers: [],
@@ -244,13 +388,17 @@ export default {
           width: '220px',
           render: (value, item) => {
             const idNumber = item.patientIdNumber ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">პ/ნ: ${item.patientIdNumber}</div>` : '';
+            const phone = item.patientPhone
+              ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">ტელ: ${item.patientPhone}</div>`
+              : '<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">ტელ: -</div>';
+            const ageValue = Number.isFinite(Number(item.patientAge)) ? Math.floor(Math.abs(Number(item.patientAge))) : null;
+            const age = ageValue !== null
+              ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">ასაკი: ${ageValue} წ.</div>`
+              : '<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">ასაკი: -</div>';
             const dob = item.patientDateOfBirth
               ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">დაბადების თარიღი: ${formatGeorgianDate(item.patientDateOfBirth)}</div>`
               : '';
-            const phone = item.patientPhone ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">ტელ: ${item.patientPhone}</div>` : '';
-            const ageValue = Number.isFinite(Number(item.patientAge)) ? Math.floor(Math.abs(Number(item.patientAge))) : null;
-            const age = ageValue !== null ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">ასაკი: ${ageValue}</div>` : '';
-            return `<div><div class="font-medium text-gray-900 dark:text-white">${value}</div>${idNumber}${dob}${phone}${age}</div>`;
+            return `<div><div class="font-medium text-gray-900 dark:text-white">${value}</div>${idNumber}${phone}${age}${dob}</div>`;
           }
         },
         {
@@ -274,7 +422,8 @@ export default {
             const status = statuses[value] || { label: value, class: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' };
             const visitId = item.id;
             const currentStatus = value?.toUpperCase() || value || 'PENDING';
-            const canEdit = window.vm && (window.vm.authStore?.userRole === 'DOCTOR' || window.vm.authStore?.userRole === 'LABOR');
+            const currentUserRole = String(window.vm?.currentUserRole || '').toUpperCase();
+            const canEdit = currentUserRole === 'DOCTOR' || currentUserRole === 'LABOR' || currentUserRole === 'ADMIN';
             
             if (canEdit) {
               return `
@@ -356,7 +505,7 @@ export default {
           sortable: false,
           width: '160px',
           render: (value, item) => {
-            const userRole = window.vm && window.vm.authStore?.userRole;
+            const userRole = String(window.vm?.currentUserRole || '').toUpperCase();
             const isAdmin = userRole === 'ADMIN';
             const isDoctor = userRole === 'DOCTOR' || userRole === 'LABOR';
             
@@ -379,6 +528,19 @@ export default {
                 </button>
               `;
             }
+
+            buttons += `
+              <button
+                onclick="window.vm?.openVisitEditModal(${item.id}); return false;"
+                class="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition cursor-pointer flex items-center gap-1"
+                title="რედაქტირება"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                რედაქტირება
+              </button>
+            `;
             
             // Payment button for admins
             if (isAdmin) {
@@ -407,11 +569,22 @@ export default {
     };
   },
   computed: {
+    currentUserRole() {
+      return String(this.authStore?.userRole || '').toUpperCase();
+    },
+    currentUserRoleLabel() {
+      const labels = {
+        ADMIN: 'ადმინისტრატორი',
+        DOCTOR: 'ექიმი',
+        LABOR: 'ლაბორანტი'
+      };
+      return labels[this.currentUserRole] || 'უცნობი';
+    },
     filteredAppointments() {
       let filtered = [...this.allAppointments];
 
       // Filter by logged-in doctor/labor user - show only their visits
-      if (this.authStore.user && (this.authStore.userRole === 'DOCTOR' || this.authStore.userRole === 'LABOR')) {
+      if (this.authStore.user && (this.currentUserRole === 'DOCTOR' || this.currentUserRole === 'LABOR')) {
         filtered = filtered.filter(a => {
           // Match by doctor_id
           if (a.doctor_id) {
@@ -488,6 +661,12 @@ export default {
         const visitDate = formatDateToInput(a.date);
         return visitDate === today;
       }).length;
+    },
+    editDepartmentDoctors() {
+      if (!this.editVisitForm.department) {
+        return [];
+      }
+      return this.doctorUsers.filter((user) => user.doctor_role === this.editVisitForm.department);
     }
   },
   mounted() {
@@ -498,7 +677,7 @@ export default {
     this.fetchPdfFiles();
     
     // Fetch doctors and services for payment modal
-    if (this.authStore.userRole === 'ADMIN') {
+    if (this.currentUserRole === 'ADMIN') {
       this.fetchDoctors();
       this.fetchServices();
     }
@@ -568,6 +747,163 @@ export default {
     },
     createNewVisit() {
       this.$router.push('/patients');
+    },
+    normalizeVisitDate(value) {
+      if (!value) {
+        return '';
+      }
+      const normalized = formatDateToInput(value);
+      if (normalized) {
+        return normalized;
+      }
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) {
+        return '';
+      }
+      const y = parsed.getFullYear();
+      const m = String(parsed.getMonth() + 1).padStart(2, '0');
+      const d = String(parsed.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    },
+    normalizeVisitTime(value, dateValue) {
+      if (value) {
+        return String(value).slice(0, 5);
+      }
+      if (!dateValue) {
+        return '';
+      }
+      const parsed = new Date(dateValue);
+      if (Number.isNaN(parsed.getTime())) {
+        return '';
+      }
+      return `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`;
+    },
+    buildEditServices(visit) {
+      const serviceNames = Array.isArray(visit?.service)
+        ? visit.service
+        : (visit?.service ? [visit.service] : []);
+      const serviceIds = Array.isArray(visit?.service_id) ? visit.service_id : [];
+      const mappedById = serviceIds
+        .map((id) => this.services.find((service) => Number(service.id) === Number(id)))
+        .filter(Boolean);
+      if (mappedById.length) {
+        return mappedById;
+      }
+      return serviceNames
+        .map((name) => this.services.find((service) => String(service.name).trim().toLowerCase() === String(name).trim().toLowerCase()))
+        .filter(Boolean);
+    },
+    async openVisitEditModal(visitId) {
+      const visit = this.allAppointments.find((item) => item.id === visitId);
+      if (!visit) {
+        this.toastStore.error('ვიზიტი არ მოიძებნა');
+        return;
+      }
+
+      if (!this.doctorUsers.length) {
+        await this.fetchDoctors();
+      }
+      if (!this.services.length) {
+        await this.fetchServices();
+      }
+
+      let selectedDoctorId = visit.doctor_id || '';
+      if (!selectedDoctorId && visit.doctorName) {
+        const matchedDoctor = this.doctorUsers.find((doctor) => `${doctor.first_name} ${doctor.last_name}`.trim().toLowerCase() === String(visit.doctorName).trim().toLowerCase());
+        if (matchedDoctor) {
+          selectedDoctorId = matchedDoctor.id;
+        }
+      }
+
+      this.editingVisitId = visit.id;
+      this.editVisitForm = {
+        patientName: visit.patientName || '',
+        department: visit.department || '',
+        doctor_id: selectedDoctorId,
+        doctor_name: visit.doctorName || '',
+        services: this.buildEditServices(visit),
+        date: this.normalizeVisitDate(visit.date),
+        time: this.normalizeVisitTime(visit.time, visit.date),
+        status: (visit.status || 'PENDING').toUpperCase(),
+        notes: visit.notes || ''
+      };
+      this.editError = '';
+      this.isEditModalOpen = true;
+    },
+    handleEditDepartmentChange() {
+      this.editVisitForm.doctor_id = '';
+      this.editVisitForm.doctor_name = '';
+      this.editVisitForm.services = [];
+    },
+    updateEditDoctorName() {
+      if (!this.editVisitForm.doctor_id) {
+        this.editVisitForm.doctor_name = '';
+        return;
+      }
+      const selectedDoctor = this.doctorUsers.find((doctor) => Number(doctor.id) === Number(this.editVisitForm.doctor_id));
+      this.editVisitForm.doctor_name = selectedDoctor ? `${selectedDoctor.first_name} ${selectedDoctor.last_name}` : '';
+    },
+    closeEditVisitModal() {
+      this.isEditModalOpen = false;
+      this.editSubmitting = false;
+      this.editError = '';
+      this.editingVisitId = null;
+    },
+    async handleVisitEditSubmit() {
+      if (this.editSubmitting || this.editingVisitId == null) {
+        return;
+      }
+
+      const selectedServices = Array.isArray(this.editVisitForm.services) ? this.editVisitForm.services : [];
+      if (!this.editVisitForm.department || !this.editVisitForm.doctor_id || !this.editVisitForm.date || !this.editVisitForm.time || selectedServices.length === 0) {
+        this.editError = 'გთხოვთ შეავსოთ ყველა აუცილებელი ველი';
+        return;
+      }
+
+      const serviceIds = selectedServices.map((service) => Number(service.id)).filter((id) => Number.isFinite(id));
+      if (serviceIds.length !== selectedServices.length) {
+        this.editError = 'ვიზიტის რედაქტირებისთვის აირჩიეთ სერვისები ჩამონათვალიდან';
+        return;
+      }
+
+      const selectedDoctor = this.doctorUsers.find((doctor) => Number(doctor.id) === Number(this.editVisitForm.doctor_id));
+      if (!selectedDoctor) {
+        this.editError = 'აირჩიეთ ექიმი ან მედპერ.';
+        return;
+      }
+
+      this.editSubmitting = true;
+      this.editError = '';
+      try {
+        const token = localStorage.getItem('auth_token');
+        await axios.patch(`/api/visits/${this.editingVisitId}`, {
+          doctor_id: Number(selectedDoctor.id),
+          doctor_name: `${selectedDoctor.first_name} ${selectedDoctor.last_name}`,
+          department: this.editVisitForm.department,
+          service: selectedServices.map((service) => service.name),
+          service_id: serviceIds,
+          date: this.editVisitForm.date,
+          time: this.editVisitForm.time,
+          status: this.editVisitForm.status || 'PENDING',
+          notes: this.editVisitForm.notes || ''
+        }, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        this.toastStore.success('ვიზიტი წარმატებით განახლდა');
+        await this.fetchAppointments();
+        this.closeEditVisitModal();
+      } catch (error) {
+        const apiErrors = error.response?.data?.errors;
+        if (apiErrors && typeof apiErrors === 'object') {
+          const messages = Object.values(apiErrors).flat().filter(Boolean);
+          this.editError = messages.length ? messages.join(' ') : 'ვიზიტის განახლება ვერ მოხერხდა';
+        } else {
+          this.editError = error.response?.data?.message || 'ვიზიტის განახლება ვერ მოხერხდა';
+        }
+      } finally {
+        this.editSubmitting = false;
+      }
     },
     async updateVisitStatus(visitId, newStatus) {
       try {

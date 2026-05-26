@@ -182,6 +182,12 @@
           </div>
           
           <Input
+            v-model="formData.gegas_code"
+            label="კოდი"
+            placeholder="მაგ: 123"
+          />
+
+          <Input
             v-model="formData.id_number"
             label="პირადი ნომერი"
             placeholder="01001012345"
@@ -283,6 +289,7 @@ export default {
           first_name: '',
           last_name: '',
           id_number: '',
+          gegas_code: '',
           date_of_birth: '',
           gender: 'male',
           phone: '',
@@ -437,6 +444,7 @@ export default {
         first_name: '',
         last_name: '',
         id_number: '',
+        gegas_code: this.getNextPatientCode(),
         date_of_birth: '',
         gender: 'male',
         phone: '',
@@ -459,6 +467,7 @@ export default {
           first_name: patient.first_name,
           last_name: patient.last_name,
           id_number: patient.id_number,
+          gegas_code: patient.gegas_code || '',
           date_of_birth: patient.date_of_birth ? patient.date_of_birth.split('T')[0] : '',
           gender: patient.gender,
           phone: patient.phone || '',
@@ -474,6 +483,17 @@ export default {
       this.editingPatientId = null;
       this.isModalOpen = false;
       this.error = '';
+    },
+    getNextPatientCode() {
+      const maxCode = (this.patients || []).reduce((max, patient) => {
+        const rawCode = String(patient?.gegasCode ?? '').trim();
+        if (!/^\d+$/.test(rawCode)) {
+          return max;
+        }
+        const numeric = Number(rawCode);
+        return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+      }, 0);
+      return String(maxCode + 1);
     },
     async handleSubmit() {
       this.loading = true;

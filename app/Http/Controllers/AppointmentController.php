@@ -131,23 +131,84 @@ class AppointmentController extends Controller
 
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'status' => 'required|in:PENDING,CONFIRMED,CANCELLED,COMPLETED',
+        $appointment = Appointment::findOrFail($id);
+
+        if ($request->has('status') && ! $request->has('doctor_name') && ! $request->has('department') && ! $request->has('service')) {
+            $validated = $request->validate([
+                'status' => 'required|in:PENDING,CONFIRMED,CANCELLED,COMPLETED',
+            ]);
+
+            $appointment->update([
+                'status' => $validated['status'],
+                'status_changed_at' => now(),
+            ]);
+
+            $appointment->refresh();
+
+            return response()->json([
+                'message' => 'Visit status updated successfully',
+                'visit' => [
+                    'id' => $appointment->id,
+                    'status' => $appointment->status,
+                    'status_changed_at' => $appointment->status_changed_at ? $appointment->status_changed_at->toISOString() : null,
+                ],
+            ]);
+        }
+
+        $validated = $request->validate([
+            'doctor_id' => 'nullable|exists:users,id',
+            'doctor_name' => 'required|string|max:255',
+            'department' => 'required|string|max:255',
+            'service' => 'required|array|min:1',
+            'service.*' => 'required|string|max:255',
+            'service_id' => 'required|array|min:1',
+            'service_id.*' => 'required|exists:services,id',
+            'date' => 'required|date',
+            'time' => 'required|string',
+            'status' => 'sometimes|in:PENDING,CONFIRMED,CANCELLED,COMPLETED',
+            'notes' => 'nullable|string',
         ]);
 
-        $appointment = Appointment::findOrFail($id);
-        $appointment->update([
-            'status' => $request->status,
-            'status_changed_at' => now()
-        ]);
+        $dateTime = $validated['date'].' '.$validated['time'];
+        $updateData = [
+            'doctor_id' => $validated['doctor_id'] ?? null,
+            'doctor_name' => $validated['doctor_name'],
+            'department' => $validated['department'],
+            'service' => $validated['service'],
+            'service_id' => $validated['service_id'],
+            'date' => $dateTime,
+            'time' => $validated['time'],
+            'notes' => $validated['notes'] ?? null,
+        ];
+        if (array_key_exists('status', $validated)) {
+            $updateData['status'] = $validated['status'];
+            $updateData['status_changed_at'] = now();
+        }
+
+        $appointment->update($updateData);
 
         $appointment->refresh();
+        $appointment->load('patient:id,first_name,last_name,id_number,date_of_birth,phone');
 
         return response()->json([
-            'message' => 'Visit status updated successfully',
+            'message' => 'Visit updated successfully',
             'visit' => [
                 'id' => $appointment->id,
+                'patient_id' => $appointment->patient_id,
+                'patientName' => $appointment->patient->first_name.' '.$appointment->patient->last_name,
+                'patientIdNumber' => $appointment->patient->id_number ?? null,
+                'patientDateOfBirth' => $appointment->patient->date_of_birth?->format('Y-m-d'),
+                'patientPhone' => $appointment->patient->phone ?? null,
+                'patientAge' => $appointment->patient->age,
+                'doctor_id' => $appointment->doctor_id,
+                'doctorName' => $appointment->doctor_name,
+                'department' => $appointment->department,
+                'service' => $appointment->service,
+                'service_id' => $appointment->service_id,
+                'date' => $appointment->date?->toISOString(),
+                'time' => $appointment->time,
                 'status' => $appointment->status,
+                'notes' => $appointment->notes,
                 'status_changed_at' => $appointment->status_changed_at ? $appointment->status_changed_at->toISOString() : null,
             ],
         ]);
