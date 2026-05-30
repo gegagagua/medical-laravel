@@ -1195,7 +1195,23 @@ export default {
           return;
         }
 
-        const rows = this.filteredPayments.map((payment, index) => {
+        const headers = [
+          '#',
+          'ინვოისი',
+          'პაციენტი',
+          'პ/ნ',
+          'განყოფილება',
+          'ექიმი',
+          'სერვისები',
+          'თანხა (₾)',
+          'ფასდაკლება',
+          'გადახდის მეთოდი',
+          'სტატუსი',
+          'თარიღი',
+          'დრო',
+        ];
+
+        const dataRows = this.filteredPayments.map((payment, index) => {
           const date = this.parseDateTimeForDisplay(this.getPaymentDateTimeValue(payment));
 
           let servicesText = '';
@@ -1206,29 +1222,29 @@ export default {
               const discount = parseFloat(service.discount) || 0;
               if (discount > 0) {
                 const discounted = price * (1 - discount / 100);
-                return `${name}: ₾${price.toFixed(2)} → ₾${discounted.toFixed(2)} (-${discount.toFixed(2)}%)`;
+                return `${name}: ${price.toFixed(2)} → ${discounted.toFixed(2)} (-${discount.toFixed(2)}%)`;
               }
-              return `${name}: ₾${price.toFixed(2)}`;
+              return `${name}: ${price.toFixed(2)}`;
             }).join(' | ');
           } else if (payment.service) {
-            servicesText = Array.isArray(payment.service) ? payment.service.join(', ') : payment.service;
+            servicesText = Array.isArray(payment.service) ? payment.service.join(', ') : String(payment.service);
           }
 
-          return {
-            '#': index + 1,
-            'ინვოისი': payment.invoiceNumber || '',
-            'პაციენტი': payment.patientName || '',
-            'პ/ნ': payment.patientIdNumber || '',
-            'განყოფილება': payment.department || '',
-            'ექიმი': payment.doctor || '',
-            'სერვისები': servicesText,
-            'თანხა (₾)': Number(payment.amount || 0),
-            'ფასდაკლება': payment.hasDiscount ? `${(payment.discountPercentage || 0).toFixed(2)}%` : '',
-            'გადახდის მეთოდი': this.getPaymentMethodLabel(payment.paymentMethod) || '',
-            'სტატუსი': this.getStatusLabel(payment.status) || '',
-            'თარიღი': date ? date.toLocaleDateString('ka-GE', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '',
-            'დრო': date ? date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' }) : '',
-          };
+          return [
+            index + 1,
+            String(payment.invoiceNumber || ''),
+            String(payment.patientName || ''),
+            String(payment.patientIdNumber || ''),
+            String(payment.department || ''),
+            String(payment.doctor || ''),
+            servicesText,
+            Number(parseFloat(payment.amount) || 0),
+            payment.hasDiscount ? `${(payment.discountPercentage || 0).toFixed(2)}%` : '',
+            this.getPaymentMethodLabel(payment.paymentMethod) || '',
+            this.getStatusLabel(payment.status) || '',
+            date ? date.toLocaleDateString('ka-GE', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '',
+            date ? date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' }) : '',
+          ];
         });
 
         const totalAmount = this.filteredPayments.reduce(
@@ -1236,23 +1252,10 @@ export default {
           0
         );
 
-        rows.push({
-          '#': '',
-          'ინვოისი': '',
-          'პაციენტი': '',
-          'პ/ნ': '',
-          'განყოფილება': '',
-          'ექიმი': '',
-          'სერვისები': 'ჯამი:',
-          'თანხა (₾)': Number(totalAmount.toFixed(2)),
-          'ფასდაკლება': '',
-          'გადახდის მეთოდი': '',
-          'სტატუსი': '',
-          'თარიღი': '',
-          'დრო': '',
-        });
+        const footerRow = ['', '', '', '', '', '', 'ჯამი:', Number(totalAmount.toFixed(2)), '', '', '', '', ''];
 
-        const worksheet = XLSX.utils.json_to_sheet(rows);
+        const aoa = [headers, ...dataRows, footerRow];
+        const worksheet = XLSX.utils.aoa_to_sheet(aoa);
 
         worksheet['!cols'] = [
           { wch: 4 },
@@ -1270,10 +1273,9 @@ export default {
           { wch: 8 },
         ];
 
-        const range = XLSX.utils.decode_range(worksheet['!ref']);
         const amountColIndex = 7;
-        for (let row = 1; row <= range.e.r; row++) {
-          const cellAddress = XLSX.utils.encode_cell({ r: row, c: amountColIndex });
+        for (let r = 1; r < aoa.length; r++) {
+          const cellAddress = XLSX.utils.encode_cell({ r, c: amountColIndex });
           const cell = worksheet[cellAddress];
           if (cell && typeof cell.v === 'number') {
             cell.t = 'n';
@@ -1284,6 +1286,11 @@ export default {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'გადახდები');
 
+        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+
         const now = new Date();
         const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         let filename = `payments_${dateStr}.xlsx`;
@@ -1291,12 +1298,20 @@ export default {
           filename = `payments_${this.filters.dateFrom}_${this.filters.dateTo}.xlsx`;
         }
 
-        XLSX.writeFile(workbook, filename);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
 
         this.toastStore.success('Excel ფაილი წარმატებით ჩამოიტვირთა');
       } catch (error) {
         console.error('Excel export error:', error);
-        this.toastStore.error('ექსპორტირებისას მოხდა შეცდომა');
+        const msg = error && error.message ? error.message : 'ექსპორტირებისას მოხდა შეცდომა';
+        this.toastStore.error(`Excel: ${msg}`);
       }
     },
     getPaymentMethodLabel(method) {
