@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\UserController;
@@ -25,6 +26,13 @@ Route::prefix('visits')->middleware('auth:sanctum')->group(function () {
     Route::post('/', [AppointmentController::class, 'store']);
     Route::patch('/{id}', [AppointmentController::class, 'update']);
     Route::delete('/{id}', [AppointmentController::class, 'destroy']);
+});
+
+// Booking calendar
+Route::prefix('bookings')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [BookingController::class, 'index']);
+    Route::post('/', [BookingController::class, 'store']);
+    Route::delete('/{id}', [BookingController::class, 'destroy']);
 });
 
 // Medical Records (ჩაწერები)

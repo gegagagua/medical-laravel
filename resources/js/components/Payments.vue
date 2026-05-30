@@ -380,6 +380,7 @@
 
 <script>
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 import { useToastStore } from '../stores/toast';
 import Navbar from './Navbar.vue';
 import Table from './ui/Table.vue';
@@ -992,335 +993,306 @@ export default {
       const printWindow = window.open('', '_blank');
       if (!printWindow) return;
 
-      const firstPayment = payments[0];
-      const allSamePatient =
-        payments.length > 0 &&
-        payments.every(p => p.patientId === payments[0].patientId);
+      const escapeHtml = (value) => {
+        if (value === null || value === undefined) return '';
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      };
+
       let totalAmount = 0;
-      payments.forEach(p => totalAmount += parseFloat(p.amount) || 0);
+      payments.forEach((p) => { totalAmount += parseFloat(p.amount) || 0; });
 
-      let paymentsHtml = '';
-      payments.forEach((payment, index) => {
+      const rowsHtml = payments.map((payment, index) => {
         const paymentDate = this.parseDateTimeForDisplay(this.getPaymentDateTimeValue(payment));
-        const formattedDate = paymentDate ? paymentDate.toLocaleDateString('ka-GE', {
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }) : '-';
+        const dateStr = paymentDate
+          ? paymentDate.toLocaleDateString('ka-GE', { year: 'numeric', month: '2-digit', day: '2-digit' })
+          : '-';
+        const timeStr = paymentDate
+          ? paymentDate.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })
+          : '';
 
-        paymentsHtml += `
-          <div style="page-break-after: ${index < payments.length - 1 ? 'always' : 'auto'}; margin-bottom: 40px;">
-            <div class="header">
-              <h1>გადახდის ინვოისი</h1>
-              <p style="margin-top: 10px; font-size: 18px; color: #666;">ინვოისი #${payment.invoiceNumber}</p>
-            </div>
-            
-            <div class="invoice-info">
-              <div class="info-section">
-                <h3>პაციენტი</h3>
-                <p style="font-weight: 600; margin-bottom: 5px;">${payment.patientName || '-'}</p>
-                ${payment.patientIdNumber ? `<p style="font-size: 14px; color: #666; margin: 3px 0;">პ/ნ: ${payment.patientIdNumber}</p>` : ''}
-                ${payment.patientDateOfBirth ? `<p style="font-size: 14px; color: #666; margin: 3px 0;">დაბადების თარიღი: ${new Date(payment.patientDateOfBirth).toLocaleDateString('ka-GE', { year: 'numeric', month: 'long', day: 'numeric' })}</p>` : ''}
-              </div>
-              <div class="info-section" style="text-align: right;">
-                <h3>გადახდის თარიღი</h3>
-                <p>${formattedDate}</p>
-              </div>
-            </div>
+        let servicesText = '';
+        if (payment.servicesDiscounts && Array.isArray(payment.servicesDiscounts) && payment.servicesDiscounts.length > 0) {
+          servicesText = payment.servicesDiscounts.map((s) => {
+            const name = s.name || '';
+            const price = parseFloat(s.price) || 0;
+            const discount = parseFloat(s.discount) || 0;
+            if (discount > 0) {
+              const discounted = price * (1 - discount / 100);
+              return `${name} (₾${discounted.toFixed(2)} / -${discount.toFixed(2)}%)`;
+            }
+            return `${name} (₾${price.toFixed(2)})`;
+          }).join('; ');
+        } else if (payment.service) {
+          servicesText = Array.isArray(payment.service) ? payment.service.join('; ') : payment.service;
+        } else {
+          servicesText = '-';
+        }
 
-            <div class="invoice-details">
-              <div class="detail-row">
-                <div class="detail-label">ექიმი:</div>
-                <div class="detail-value">${payment.doctor || '-'}</div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">სერვისები:</div>
-                <div class="detail-value">
-                  ${this.formatServicesForPrint(payment)}
-                </div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">გადახდის მეთოდი:</div>
-                <div class="detail-value">${this.getPaymentMethodLabel(payment.paymentMethod)}</div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">სტატუსი:</div>
-                <div class="detail-value">${this.getStatusLabel(payment.status)}</div>
-              </div>
-            </div>
-
-            <div class="amount-section">
-              <div class="amount-label">გადასახდელი თანხა</div>
-              <div class="amount-value">₾${Number(payment.amount).toFixed(2)}</div>
-            </div>
-
-            <div class="footer">
-              <p>დაბეჭდილია: ${new Date().toLocaleDateString('ka-GE', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}</p>
-            </div>
-          </div>
+        return `
+          <tr>
+            <td class="num">${index + 1}</td>
+            <td class="mono">${escapeHtml(payment.invoiceNumber || '')}</td>
+            <td>
+              <div class="nowrap">${escapeHtml(payment.patientName || '-')}</div>
+              ${payment.patientIdNumber ? `<div class="muted">${escapeHtml(payment.patientIdNumber)}</div>` : ''}
+            </td>
+            <td>${escapeHtml(payment.doctor || '-')}</td>
+            <td>${escapeHtml(payment.department || '-')}</td>
+            <td class="services">${escapeHtml(servicesText)}</td>
+            <td class="num amount">₾${Number(payment.amount || 0).toFixed(2)}</td>
+            <td>${escapeHtml(this.getPaymentMethodLabel(payment.paymentMethod) || '-')}</td>
+            <td>${escapeHtml(this.getStatusLabel(payment.status) || '-')}</td>
+            <td class="nowrap">
+              <div>${dateStr}</div>
+              ${timeStr ? `<div class="muted">${timeStr}</div>` : ''}
+            </td>
+          </tr>
         `;
-      });
+      }).join('');
 
-      // Add summary page if multiple payments
-      let summaryHtml = '';
-      if (payments.length > 1) {
-        summaryHtml = `
-          <div style="page-break-before: always; padding-top: 40px;">
-            <div class="header">
-              <h1>გადახდების შეჯამება</h1>
-            </div>
-            
-            <div class="invoice-info">
-              <div class="info-section">
-                <h3>პაციენტი</h3>
-                ${
-                  allSamePatient
-                    ? `<p style="font-weight: 600; margin-bottom: 5px;">${firstPayment.patientName || '-'}</p>
-                ${firstPayment.patientIdNumber ? `<p style="font-size: 14px; color: #666; margin: 3px 0;">პ/ნ: ${firstPayment.patientIdNumber}</p>` : ''}`
-                    : `<p style="font-weight: 600; margin-bottom: 5px;">სხვადასხვა პაციენტის გადახდები</p>`
-                }
-              </div>
-            </div>
-
-            <div class="invoice-details">
-              <div class="detail-row">
-                <div class="detail-label">სულ გადახდები:</div>
-                <div class="detail-value">${payments.length}</div>
-              </div>
-              ${payments.map((p, idx) => `
-                <div class="detail-row">
-                  <div class="detail-label">${idx + 1}. ინვოისი ${p.invoiceNumber}:</div>
-                  <div class="detail-value">₾${Number(p.amount).toFixed(2)}</div>
-                </div>
-              `).join('')}
-            </div>
-
-            <div class="amount-section">
-              <div class="amount-label">მთლიანი თანხა</div>
-              <div class="amount-value">₾${totalAmount.toFixed(2)}</div>
-            </div>
-
-            <div class="footer">
-              <p>დაბეჭდილია: ${new Date().toLocaleDateString('ka-GE', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}</p>
-            </div>
-          </div>
-        `;
+      const filterSummary = [];
+      if (this.filters.dateFrom && this.filters.dateTo) {
+        if (this.filters.dateFrom === this.filters.dateTo) {
+          filterSummary.push(`თარიღი: ${this.filters.dateFrom}`);
+        } else {
+          filterSummary.push(`პერიოდი: ${this.filters.dateFrom} — ${this.filters.dateTo}`);
+        }
       }
+      if (this.filters.paymentMethod) {
+        filterSummary.push(`მეთოდი: ${this.getPaymentMethodLabel(this.filters.paymentMethod)}`);
+      }
+      if (this.filters.department) {
+        filterSummary.push(`განყოფილება: ${this.filters.department}`);
+      }
+      if (this.filters.doctor) {
+        filterSummary.push(`ექიმი: ${this.filters.doctor}`);
+      }
+      const filterLine = filterSummary.length ? filterSummary.join(' · ') : '';
+      const printedAt = new Date().toLocaleString('ka-GE', {
+        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+      });
 
       const printContent = `
         <!DOCTYPE html>
         <html>
           <head>
-            <title>გადახდების ინვოისები${allSamePatient ? ` - ${firstPayment.patientName || ''}` : ''}</title>
+            <meta charset="utf-8" />
+            <title>გადახდების სია</title>
             <style>
+              * { box-sizing: border-box; }
               body {
-                font-family: Arial, sans-serif;
-                padding: 40px;
-                color: #333;
-                max-width: 800px;
-                margin: 0 auto;
-              }
-              .header {
-                text-align: center;
-                margin-bottom: 40px;
-                border-bottom: 3px solid #333;
-                padding-bottom: 20px;
-              }
-              .header h1 {
+                font-family: Arial, "Helvetica Neue", sans-serif;
+                color: #111;
                 margin: 0;
-                font-size: 28px;
-                font-weight: bold;
+                padding: 12px 16px;
+                font-size: 11px;
               }
-              .invoice-info {
+              .meta {
                 display: flex;
                 justify-content: space-between;
-                margin-bottom: 30px;
+                align-items: baseline;
+                margin-bottom: 6px;
+                gap: 12px;
+                flex-wrap: wrap;
               }
-              .info-section {
-                flex: 1;
-              }
-              .info-section h3 {
-                margin: 0 0 10px 0;
+              .meta h1 {
                 font-size: 14px;
-                color: #666;
+                margin: 0;
+                font-weight: 700;
+              }
+              .meta .filters { font-size: 10px; color: #444; }
+              .meta .printed { font-size: 10px; color: #666; }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: auto;
+              }
+              th, td {
+                border: 1px solid #555;
+                padding: 3px 5px;
+                vertical-align: top;
+                text-align: left;
+                line-height: 1.25;
+              }
+              thead th {
+                background: #e8e8e8;
+                font-weight: 700;
+                font-size: 10px;
                 text-transform: uppercase;
+                letter-spacing: 0.2px;
               }
-              .info-section p {
-                margin: 5px 0;
-                font-size: 16px;
-                font-weight: 500;
+              tbody tr:nth-child(even) td { background: #fafafa; }
+              td.num, th.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+              td.amount { font-weight: 700; }
+              td.mono { font-family: "Courier New", monospace; font-size: 10px; white-space: nowrap; }
+              td.services { font-size: 10px; }
+              td.nowrap, .nowrap { white-space: nowrap; }
+              .muted { color: #666; font-size: 10px; }
+              tfoot td {
+                font-weight: 700;
+                background: #f0f0f0;
+                font-size: 11px;
               }
-              .invoice-details {
-                margin: 30px 0;
-                border: 2px solid #333;
-                border-radius: 8px;
-                overflow: hidden;
-              }
-              .detail-row {
-                display: flex;
-                border-bottom: 1px solid #ddd;
-                padding: 15px;
-              }
-              .detail-row:last-child {
-                border-bottom: none;
-              }
-              .detail-label {
-                font-weight: bold;
-                width: 200px;
-                color: #666;
-              }
-              .detail-value {
-                flex: 1;
-                font-size: 16px;
-              }
-              .amount-section {
-                background-color: #f5f5f5;
-                padding: 20px;
-                border-radius: 8px;
-                margin-top: 30px;
-                text-align: center;
-              }
-              .amount-label {
-                font-size: 18px;
-                color: #666;
-                margin-bottom: 10px;
-              }
-              .amount-value {
-                font-size: 36px;
-                font-weight: bold;
-                color: #22c55e;
-              }
-              .footer {
-                margin-top: 40px;
-                padding-top: 20px;
-                border-top: 1px solid #ddd;
-                text-align: center;
-                font-size: 12px;
-                color: #666;
-              }
+              @page { size: A4 landscape; margin: 10mm; }
               @media print {
-                body {
-                  padding: 20px;
-                }
+                body { padding: 0; }
+                thead { display: table-header-group; }
+                tr { page-break-inside: avoid; }
               }
             </style>
           </head>
           <body>
-            ${paymentsHtml}
-            ${summaryHtml}
+            <div class="meta">
+              <h1>გადახდების სია (${payments.length})</h1>
+              <div class="filters">${escapeHtml(filterLine)}</div>
+              <div class="printed">დაბეჭდილია: ${escapeHtml(printedAt)}</div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th class="num">#</th>
+                  <th>ინვოისი</th>
+                  <th>პაციენტი</th>
+                  <th>ექიმი</th>
+                  <th>განყოფილება</th>
+                  <th>სერვისები</th>
+                  <th class="num">თანხა</th>
+                  <th>მეთოდი</th>
+                  <th>სტატუსი</th>
+                  <th>თარიღი</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="6" style="text-align: right;">ჯამი:</td>
+                  <td class="num">₾${totalAmount.toFixed(2)}</td>
+                  <td colspan="3"></td>
+                </tr>
+              </tfoot>
+            </table>
           </body>
         </html>
       `;
-      
+
       printWindow.document.write(printContent);
       printWindow.document.close();
-      
+
       setTimeout(() => {
         printWindow.print();
       }, 250);
     },
     exportToExcel() {
       try {
-        // Export filtered payments to Excel
         if (!this.filteredPayments || this.filteredPayments.length === 0) {
           this.toastStore.warning('ექსპორტირებისთვის მონაცემები არ არის');
           return;
         }
 
-        const dataToExport = this.filteredPayments.map(payment => {
+        const rows = this.filteredPayments.map((payment, index) => {
           const date = this.parseDateTimeForDisplay(this.getPaymentDateTimeValue(payment));
-          
-          // Format services with discounts
-          let servicesText = payment.service || '-';
+
+          let servicesText = '';
           if (payment.servicesDiscounts && Array.isArray(payment.servicesDiscounts) && payment.servicesDiscounts.length > 0) {
-            servicesText = payment.servicesDiscounts.map(service => {
-              const serviceName = service.name || '';
-              const servicePrice = parseFloat(service.price) || 0;
+            servicesText = payment.servicesDiscounts.map((service) => {
+              const name = service.name || '';
+              const price = parseFloat(service.price) || 0;
               const discount = parseFloat(service.discount) || 0;
-              const discountedPrice = servicePrice * (1 - discount / 100);
-              
               if (discount > 0) {
-                return `${serviceName}: ₾${servicePrice.toFixed(2)} → ₾${discountedPrice.toFixed(2)} (-${discount.toFixed(2)}%)`;
-              } else {
-                return `${serviceName}: ₾${servicePrice.toFixed(2)}`;
+                const discounted = price * (1 - discount / 100);
+                return `${name}: ₾${price.toFixed(2)} → ₾${discounted.toFixed(2)} (-${discount.toFixed(2)}%)`;
               }
+              return `${name}: ₾${price.toFixed(2)}`;
             }).join(' | ');
+          } else if (payment.service) {
+            servicesText = Array.isArray(payment.service) ? payment.service.join(', ') : payment.service;
           }
-          
+
           return {
+            '#': index + 1,
             'ინვოისი': payment.invoiceNumber || '',
             'პაციენტი': payment.patientName || '',
-            'განყოფილება': payment.department || '-',
-            'ექიმი': payment.doctor || '-',
+            'პ/ნ': payment.patientIdNumber || '',
+            'განყოფილება': payment.department || '',
+            'ექიმი': payment.doctor || '',
             'სერვისები': servicesText,
-            'თანხა': Number(payment.amount || 0).toFixed(2),
-            'ფასდაკლება': payment.hasDiscount ? `${(payment.discountPercentage || 0).toFixed(2)}%` : '-',
-            'გადახდის მეთოდი': this.getPaymentMethodLabel(payment.paymentMethod),
-            'სტატუსი': this.getStatusLabel(payment.status),
-            'თარიღი': date ? date.toLocaleDateString('ka-GE', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '-',
-            'დრო': date ? date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' }) : '-'
+            'თანხა (₾)': Number(payment.amount || 0),
+            'ფასდაკლება': payment.hasDiscount ? `${(payment.discountPercentage || 0).toFixed(2)}%` : '',
+            'გადახდის მეთოდი': this.getPaymentMethodLabel(payment.paymentMethod) || '',
+            'სტატუსი': this.getStatusLabel(payment.status) || '',
+            'თარიღი': date ? date.toLocaleDateString('ka-GE', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '',
+            'დრო': date ? date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' }) : '',
           };
         });
 
-        // Get headers
-        const headers = Object.keys(dataToExport[0]);
-        
-        // Create CSV rows
-        const csvRows = [
-          headers.join(','),
-          ...dataToExport.map(row => 
-            headers.map(header => {
-              const value = row[header] || '';
-              // Escape commas and quotes
-              return `"${String(value).replace(/"/g, '""')}"`;
-            }).join(',')
-          )
+        const totalAmount = this.filteredPayments.reduce(
+          (sum, p) => sum + (parseFloat(p.amount) || 0),
+          0
+        );
+
+        rows.push({
+          '#': '',
+          'ინვოისი': '',
+          'პაციენტი': '',
+          'პ/ნ': '',
+          'განყოფილება': '',
+          'ექიმი': '',
+          'სერვისები': 'ჯამი:',
+          'თანხა (₾)': Number(totalAmount.toFixed(2)),
+          'ფასდაკლება': '',
+          'გადახდის მეთოდი': '',
+          'სტატუსი': '',
+          'თარიღი': '',
+          'დრო': '',
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+
+        worksheet['!cols'] = [
+          { wch: 4 },
+          { wch: 14 },
+          { wch: 22 },
+          { wch: 14 },
+          { wch: 18 },
+          { wch: 20 },
+          { wch: 40 },
+          { wch: 12 },
+          { wch: 12 },
+          { wch: 14 },
+          { wch: 14 },
+          { wch: 12 },
+          { wch: 8 },
         ];
 
-        // Create CSV string
-        const csvContent = csvRows.join('\n');
-        
-        // Add BOM for UTF-8 Excel compatibility
-        const BOM = '\uFEFF';
-        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-        
-        // Create download link
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        
-        // Generate filename with date range
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
-        let filename = `payments_${dateStr}.csv`;
-        
-        if (this.filters.dateFrom && this.filters.dateTo) {
-          filename = `payments_${this.filters.dateFrom}_${this.filters.dateTo}.csv`;
+        const range = XLSX.utils.decode_range(worksheet['!ref']);
+        const amountColIndex = 7;
+        for (let row = 1; row <= range.e.r; row++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: row, c: amountColIndex });
+          const cell = worksheet[cellAddress];
+          if (cell && typeof cell.v === 'number') {
+            cell.t = 'n';
+            cell.z = '0.00';
+          }
         }
-        
-        link.setAttribute('download', filename);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Clean up URL
-        setTimeout(() => URL.revokeObjectURL(url), 100);
-        
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'გადახდები');
+
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        let filename = `payments_${dateStr}.xlsx`;
+        if (this.filters.dateFrom && this.filters.dateTo) {
+          filename = `payments_${this.filters.dateFrom}_${this.filters.dateTo}.xlsx`;
+        }
+
+        XLSX.writeFile(workbook, filename);
+
         this.toastStore.success('Excel ფაილი წარმატებით ჩამოიტვირთა');
       } catch (error) {
         console.error('Excel export error:', error);

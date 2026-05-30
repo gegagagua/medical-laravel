@@ -11,6 +11,7 @@ import PatientDetails from '../components/PatientDetails.vue';
 import Payments from '../components/Payments.vue';
 import Visits from '../components/Visits.vue';
 import Services from '../components/Services.vue';
+import BookingCalendar from '../components/BookingCalendar.vue';
 
 const routes = [
   {
@@ -77,6 +78,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/booking',
+    name: 'BookingCalendar',
+    component: BookingCalendar,
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/'
   }
@@ -116,7 +123,7 @@ router.beforeEach((to, from, next) => {
   // Restrict labor users to only visits page
   if (authStore.isAuthenticated && authStore.userRole === 'LABOR') {
     // Define restricted routes for labor users
-    const restrictedRoutes = ['/dashboard', '/users', '/patients', '/payments'];
+    const restrictedRoutes = ['/dashboard', '/users', '/patients', '/payments', '/booking'];
     const isRestrictedRoute = restrictedRoutes.includes(to.path) || to.path.startsWith('/patients/');
     
     if (isRestrictedRoute) {

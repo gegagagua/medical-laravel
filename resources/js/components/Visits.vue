@@ -159,6 +159,8 @@
           :columns="columns"
           :page-size="10"
           :searchable="true"
+          :wrap-cells="true"
+          :compact="true"
           search-placeholder="მოძებნეთ ვიზიტი (პაციენტი, ექიმი, სერვისი, შენიშვნა)..."
           empty-message="ვიზიტები არ მოიძებნა"
           :loading="loading"
@@ -375,30 +377,24 @@ export default {
       paymentCreateInFlight: false,
       columns: [
         {
-          key: 'id',
-          label: 'ID',
-          sortable: true,
-          width: '80px'
-        },
-        {
           key: 'patientName',
           label: 'პაციენტი',
           sortable: true,
           filterable: true,
-          width: '220px',
+          width: '200px',
           render: (value, item) => {
-            const idNumber = item.patientIdNumber ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">პ/ნ: ${item.patientIdNumber}</div>` : '';
+            const idNumber = item.patientIdNumber ? `<div class="text-[10px] text-gray-500 dark:text-gray-400">პ/ნ: ${item.patientIdNumber}</div>` : '';
             const phone = item.patientPhone
-              ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">ტელ: ${item.patientPhone}</div>`
-              : '<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">ტელ: -</div>';
+              ? `<div class="text-[10px] text-gray-500 dark:text-gray-400">ტელ: ${item.patientPhone}</div>`
+              : '<div class="text-[10px] text-gray-500 dark:text-gray-400">ტელ: -</div>';
             const ageValue = Number.isFinite(Number(item.patientAge)) ? Math.floor(Math.abs(Number(item.patientAge))) : null;
             const age = ageValue !== null
-              ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">ასაკი: ${ageValue} წ.</div>`
-              : '<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">ასაკი: -</div>';
+              ? `<div class="text-[10px] text-gray-500 dark:text-gray-400">ასაკი: ${ageValue} წ.</div>`
+              : '<div class="text-[10px] text-gray-500 dark:text-gray-400">ასაკი: -</div>';
             const dob = item.patientDateOfBirth
-              ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">დაბადების თარიღი: ${formatGeorgianDate(item.patientDateOfBirth)}</div>`
+              ? `<div class="text-[10px] text-gray-500 dark:text-gray-400">დაბ.: ${formatGeorgianDate(item.patientDateOfBirth)}</div>`
               : '';
-            return `<div><div class="font-medium text-gray-900 dark:text-white">${value}</div>${idNumber}${phone}${age}${dob}</div>`;
+            return `<div><div class="font-medium text-xs text-gray-900 dark:text-white">${value}</div>${idNumber}${phone}${age}${dob}</div>`;
           }
         },
         {
@@ -406,14 +402,13 @@ export default {
           label: 'სტატუსი',
           sortable: true,
           filterable: true,
-          width: '160px',
+          width: '130px',
           render: (value, item) => {
             const statuses = {
               PENDING: { label: 'მოლოდინში', class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
               CONFIRMED: { label: 'დადასტურებული', class: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
               CANCELLED: { label: 'გაუქმებული', class: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
               COMPLETED: { label: 'დასრულებული', class: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-              // Handle lowercase for backward compatibility
               pending: { label: 'მოლოდინში', class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
               confirmed: { label: 'დადასტურებული', class: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
               cancelled: { label: 'გაუქმებული', class: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
@@ -424,12 +419,12 @@ export default {
             const currentStatus = value?.toUpperCase() || value || 'PENDING';
             const currentUserRole = String(window.vm?.currentUserRole || '').toUpperCase();
             const canEdit = currentUserRole === 'DOCTOR' || currentUserRole === 'LABOR' || currentUserRole === 'ADMIN';
-            
+
             if (canEdit) {
               return `
-                <select 
+                <select
                   data-visit-id="${visitId}"
-                  class="visit-status-select px-2 py-1 rounded-lg text-xs font-medium bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer w-full"
+                  class="visit-status-select px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer w-full"
                   value="${currentStatus}"
                 >
                   <option value="PENDING" ${currentStatus === 'PENDING' ? 'selected' : ''}>მოლოდინში</option>
@@ -439,18 +434,18 @@ export default {
                 </select>
               `;
             }
-            return `<span class="px-2 py-1 rounded-full text-xs font-medium ${status.class}">${status.label}</span>`;
+            return `<span class="px-1.5 py-0.5 rounded-full text-[10px] font-medium ${status.class}">${status.label}</span>`;
           }
         },
         {
           key: 'doctorName',
-          label: 'ექიმი / განყოფილება',
+          label: 'ექიმი / განყოფ.',
           sortable: true,
           filterable: true,
-          width: '180px',
+          width: '160px',
           render: (value, item) => {
-            const doctor = value ? `<div class="text-sm font-medium text-gray-900 dark:text-white">${value}</div>` : '<div class="text-sm text-gray-400">-</div>';
-            const department = item.department ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${item.department}</div>` : '';
+            const doctor = value ? `<div class="text-xs font-medium text-gray-900 dark:text-white">${value}</div>` : '<div class="text-xs text-gray-400">-</div>';
+            const department = item.department ? `<div class="text-[10px] text-gray-500 dark:text-gray-400">${item.department}</div>` : '';
             return `<div>${doctor}${department}</div>`;
           }
         },
@@ -459,51 +454,50 @@ export default {
           label: 'სერვისი',
           sortable: true,
           filterable: true,
-          width: '200px',
+          width: '180px',
           render: (value) => {
-            if (!value) return '<span class="text-sm text-gray-600 dark:text-gray-400">-</span>';
+            if (!value) return '<span class="text-xs text-gray-600 dark:text-gray-400">-</span>';
             const services = Array.isArray(value) ? value : [value];
-            // Show services on multiple lines if needed
-            return `<div class="text-sm text-gray-600 dark:text-gray-400">${services.map(s => `<div>${s}</div>`).join('')}</div>`;
+            return `<div class="text-[11px] text-gray-600 dark:text-gray-400">${services.map(s => `<div>${s}</div>`).join('')}</div>`;
           }
         },
         {
           key: 'date',
           label: 'თარიღი / დრო',
           sortable: true,
-          width: '140px',
+          width: '110px',
           render: (value, item) => {
             const date = new Date(value);
             const dateStr = date.toLocaleDateString('ka-GE', { year: 'numeric', month: 'short', day: 'numeric' });
             const timeStr = item.time || '';
-            return `<div><div class="font-medium text-gray-900 dark:text-white text-sm">${dateStr}</div><div class="font-mono text-xs text-gray-500 dark:text-gray-400 mt-0.5">${timeStr}</div></div>`;
+            return `<div><div class="font-medium text-gray-900 dark:text-white text-xs">${dateStr}</div><div class="font-mono text-[10px] text-gray-500 dark:text-gray-400">${timeStr}</div></div>`;
           }
         },
         {
           key: 'status_changed_at',
-          label: 'სტატუსის შეცვლა',
+          label: 'სტ. შეცვლა',
           sortable: true,
-          width: '150px',
+          width: '110px',
           render: (value) => {
-            if (!value) return '<span class="text-sm text-gray-500 dark:text-gray-400">-</span>';
+            if (!value) return '<span class="text-[10px] text-gray-500 dark:text-gray-400">-</span>';
             const date = new Date(value);
             const dateStr = date.toLocaleDateString('ka-GE', { year: 'numeric', month: 'short', day: 'numeric' });
             const timeStr = date.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' });
-            return `<div><div class="text-xs text-gray-600 dark:text-gray-400">${dateStr}</div><div class="text-xs text-gray-500 dark:text-gray-400">${timeStr}</div></div>`;
+            return `<div><div class="text-[10px] text-gray-600 dark:text-gray-400">${dateStr}</div><div class="text-[10px] text-gray-500 dark:text-gray-400">${timeStr}</div></div>`;
           }
         },
         {
           key: 'notes',
           label: 'შენიშვნა',
           filterable: true,
-          width: '200px',
-          render: (value) => `<span class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">${value || '-'}</span>`
+          width: '160px',
+          render: (value) => `<span class="text-[11px] text-gray-600 dark:text-gray-400 line-clamp-2">${value || '-'}</span>`
         },
         {
           key: 'actions',
           label: 'მოქმედებები',
           sortable: false,
-          width: '160px',
+          width: '140px',
           render: (value, item) => {
             const userRole = String(window.vm?.currentUserRole || '').toUpperCase();
             const isAdmin = userRole === 'ADMIN';
@@ -513,44 +507,44 @@ export default {
             
             let buttons = '';
             
-            // Print button for doctors
             if (isDoctor) {
               buttons += `
-                <button 
+                <button
                   onclick="window.printVisit(${item.id}); return false;"
-                  class="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition cursor-pointer flex items-center gap-1"
+                  class="px-2 py-1 text-[10px] bg-blue-500 hover:bg-blue-600 text-white rounded-md transition cursor-pointer flex items-center gap-1"
                   title="დაბეჭდვა"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                   </svg>
-                  დაბეჭდვა
+                  ბეჭდვა
                 </button>
               `;
             }
 
-            buttons += `
-              <button
-                onclick="window.vm?.openVisitEditModal(${item.id}); return false;"
-                class="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition cursor-pointer flex items-center gap-1"
-                title="რედაქტირება"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                რედაქტირება
-              </button>
-            `;
-            
-            // Payment button for admins
             if (isAdmin) {
               buttons += `
-                <button 
+                <button
+                  onclick="window.vm?.openVisitEditModal(${item.id}); return false;"
+                  class="px-2 py-1 text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition cursor-pointer flex items-center gap-1"
+                  title="რედაქტირება"
+                >
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  რედაქტ.
+                </button>
+              `;
+            }
+
+            if (isAdmin) {
+              buttons += `
+                <button
                   onclick="window.vm?.openPaymentModal(${item.id})"
-                  class="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg transition cursor-pointer flex items-center gap-1"
+                  class="px-2 py-1 text-[10px] bg-green-600 hover:bg-green-700 text-white rounded-md transition cursor-pointer flex items-center gap-1"
                   title="გადახდის დამატება"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                   გადახდა
@@ -559,7 +553,7 @@ export default {
             }
             
             return `
-              <div class="flex justify-center gap-2" onclick="event.stopPropagation()">
+              <div class="flex flex-wrap justify-center gap-1.5" onclick="event.stopPropagation()">
                 ${buttons}
               </div>
             `;
@@ -1321,8 +1315,37 @@ export default {
         ? visitDateObj.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })
         : '—');
 
+      const computeAge = (dobValue, fallback) => {
+        if (dobValue) {
+          const dob = new Date(dobValue);
+          if (!Number.isNaN(dob.getTime())) {
+            const now = new Date();
+            let years = now.getFullYear() - dob.getFullYear();
+            const m = now.getMonth() - dob.getMonth();
+            if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) {
+              years--;
+            }
+            if (Number.isFinite(years) && years >= 0) {
+              return years;
+            }
+          }
+        }
+        const fallbackNum = Number(fallback);
+        if (Number.isFinite(fallbackNum) && fallbackNum >= 0) {
+          return Math.floor(fallbackNum);
+        }
+        return null;
+      };
+      const computedAge = computeAge(visit.patientDateOfBirth, visit.patientAge);
+
       const dobHtml = visit.patientDateOfBirth
         ? `<br><small style="color: #666;">დაბადების თარიღი: ${formatGeorgianDate(visit.patientDateOfBirth)}</small>`
+        : '';
+      const ageHtml = computedAge !== null
+        ? `<br><small style="color: #666;">ასაკი: ${computedAge} წ.</small>`
+        : '';
+      const phoneHtml = visit.patientPhone
+        ? `<br><small style="color: #666;">ტელ: ${String(visit.patientPhone).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</small>`
         : '';
 
       const statusChangedHtml = visit.status_changed_at
@@ -1340,27 +1363,27 @@ export default {
             <meta charset="utf-8" />
             <title>ვიზიტის ინფორმაცია - ${visit.id}</title>
             <style>
-              body { font-family: Arial, sans-serif; padding: 40px; color: #333; max-width: 800px; margin: 0 auto; }
-              .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #333; padding-bottom: 20px; }
-              .header h1 { margin: 0; font-size: 28px; font-weight: bold; }
-              .visit-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+              body { font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 800px; margin: 0 auto; }
+              .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+              .header h1 { margin: 0; font-size: 24px; font-weight: bold; }
+              .visit-info { display: flex; justify-content: space-between; margin-bottom: 15px; }
               .info-section { flex: 1; }
-              .info-section h3 { margin: 0 0 10px 0; font-size: 14px; color: #666; text-transform: uppercase; }
-              .info-section p { margin: 5px 0; font-size: 16px; font-weight: 500; }
-              .visit-details { background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
-              .detail-row { display: flex; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ddd; }
+              .info-section h3 { margin: 0 0 5px 0; font-size: 13px; color: #666; text-transform: uppercase; }
+              .info-section p { margin: 2px 0; font-size: 15px; font-weight: 500; }
+              .visit-details { background-color: #f9f9f9; padding: 10px 12px; border-radius: 6px; margin-bottom: 15px; }
+              .detail-row { display: flex; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #ddd; }
               .detail-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-              .detail-label { font-weight: bold; width: 170px; color: #666; }
+              .detail-label { font-weight: bold; width: 150px; color: #666; }
               .detail-value { flex: 1; color: #333; }
-              .service-item { padding: 8px 0; border-bottom: 1px solid #eee; }
+              .service-item { padding: 3px 0; border-bottom: 1px solid #eee; }
               .service-item:last-child { border-bottom: none; }
-              .status-badge { display: inline-block; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; }
+              .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 13px; }
               .status-pending { background-color: #fef3c7; color: #92400e; }
               .status-confirmed { background-color: #dbeafe; color: #1e40af; }
               .status-cancelled { background-color: #fee2e2; color: #991b1b; }
               .status-completed { background-color: #d1fae5; color: #065f46; }
-              .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
-              @media print { body { padding: 20px; } }
+              .footer { text-align: center; margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd; color: #666; font-size: 11px; }
+              @media print { body { padding: 10px; } }
             </style>
           </head>
           <body>
@@ -1377,7 +1400,9 @@ export default {
                 <div class="detail-value">
                   ${String(visit.patientName || '—').replace(/</g, '&lt;').replace(/>/g, '&gt;')}
                   ${visit.patientIdNumber ? `<br><small style="color: #666;">პ/ნ: ${String(visit.patientIdNumber).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</small>` : ''}
+                  ${phoneHtml}
                   ${dobHtml}
+                  ${ageHtml}
                 </div>
               </div>
               <div class="detail-row"><div class="detail-label">ექიმი:</div><div class="detail-value">${String(visit.doctorName || '—').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div></div>

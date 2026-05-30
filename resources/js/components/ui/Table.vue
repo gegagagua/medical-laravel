@@ -37,8 +37,11 @@
             <th
               v-for="column in columns"
               :key="column.key"
-              class="px-4 py-3 text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider"
-              :class="wrapCells ? 'whitespace-normal break-words' : ''"
+              :class="[
+                'text-[10px] font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider',
+                compact ? 'px-2 py-2' : 'px-4 py-3',
+                wrapCells ? 'whitespace-normal break-words' : ''
+              ]"
               :style="{ width: column.width }"
             >
               <button
@@ -47,7 +50,7 @@
                 class="flex items-center gap-1 hover:text-gray-900 dark:hover:text-white transition-colors"
               >
                 {{ column.label }}
-                <svg v-if="sortColumn === column.key" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="sortColumn === column.key" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path v-if="sortDirection === 'asc'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
                   <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
@@ -57,7 +60,11 @@
           </tr>
           <!-- Column Filters Row -->
           <tr v-if="hasFilterableColumns" class="bg-gray-50 dark:bg-gray-800">
-            <th v-for="column in columns" :key="`filter-${column.key}`" class="px-4 py-2">
+            <th
+              v-for="column in columns"
+              :key="`filter-${column.key}`"
+              :class="compact ? 'px-2 py-1' : 'px-4 py-2'"
+            >
               <input
                 v-if="column.filterable"
                 type="text"
@@ -99,8 +106,11 @@
             <td
               v-for="column in columns"
               :key="column.key"
-              class="px-4 py-4 text-sm text-gray-900 dark:text-gray-100"
-              :class="wrapCells ? 'whitespace-normal break-words align-top' : 'whitespace-nowrap'"
+              :class="[
+                'text-gray-900 dark:text-gray-100',
+                compact ? 'px-2 py-2 text-xs' : 'px-4 py-4 text-sm',
+                wrapCells ? 'whitespace-normal break-words align-top' : 'whitespace-nowrap'
+              ]"
             >
               <component
                 :is="column.render ? 'span' : 'span'"
@@ -203,6 +213,10 @@ export default {
       default: null
     },
     wrapCells: {
+      type: Boolean,
+      default: false
+    },
+    compact: {
       type: Boolean,
       default: false
     }

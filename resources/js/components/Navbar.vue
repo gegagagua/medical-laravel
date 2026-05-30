@@ -1,29 +1,29 @@
 <template>
   <nav class="bg-white dark:bg-gray-800 shadow-lg border-b border-gray-200 dark:border-gray-700">
-    <div class="max-w-[1485px] mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between h-16">
+    <div class="max-w-[1485px] mx-auto px-4 sm:px-5 lg:px-7">
+      <div class="flex justify-between h-14">
         <!-- Logo and Nav Items -->
         <div class="flex">
           <!-- Logo -->
-          <router-link :to="authStore.userRole === 'LABOR' ? '/visits' : '/dashboard'" class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <router-link :to="authStore.userRole === 'LABOR' ? '/visits' : '/dashboard'" class="flex items-center gap-2.5">
+            <div class="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </div>
-            <span class="text-xl font-bold text-gray-900 dark:text-white hidden sm:block">
+            <span class="text-base font-bold text-gray-900 dark:text-white hidden sm:block">
               სამედიცინო პორტალი
             </span>
           </router-link>
 
           <!-- Desktop Navigation -->
-          <div class="hidden md:ml-10 md:flex md:space-x-2">
+          <div class="hidden md:ml-8 md:flex md:space-x-1.5">
             <router-link
               v-for="item in navItems"
               :key="item.path"
               :to="item.path"
               :class="[
-                'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                'inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
                 isActive(item.path)
                   ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -36,9 +36,9 @@
         </div>
 
         <!-- User Menu -->
-        <div class="flex items-center gap-4">
-          <div v-if="authStore.user" class="hidden md:flex items-center gap-2 text-sm">
-            <div class="text-right">
+        <div class="flex items-center gap-3.5">
+          <div v-if="authStore.user" class="hidden md:flex items-center gap-2.5 text-sm">
+            <div class="text-right leading-tight">
               <div class="font-medium text-gray-900 dark:text-white">
                 {{ authStore.user.first_name }} {{ authStore.user.last_name }}
               </div>
@@ -46,21 +46,21 @@
                 {{ getRoleLabel(authStore.user.role) }}
               </div>
             </div>
-            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
               {{ authStore.user.first_name[0] }}{{ authStore.user.last_name[0] }}
             </div>
           </div>
-          <Button
+          <button
             v-if="authStore.user"
-            variant="secondary"
+            type="button"
             @click="handleLogout"
-            class="hidden md:flex"
+            class="hidden md:inline-flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition"
           >
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             გასვლა
-          </Button>
+          </button>
 
           <!-- Mobile menu button -->
           <button
@@ -156,6 +156,11 @@ export default {
           name: 'ვიზიტები',
           path: '/visits',
           icon: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>',
+        },
+        {
+          name: 'ჯავშნები',
+          path: '/booking',
+          icon: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>',
         },
         {
           name: 'გადახდები',
