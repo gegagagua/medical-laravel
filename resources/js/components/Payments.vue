@@ -1239,7 +1239,7 @@ export default {
             String(payment.doctor || ''),
             servicesText,
             Number(parseFloat(payment.amount) || 0),
-            payment.hasDiscount ? `${(payment.discountPercentage || 0).toFixed(2)}%` : '',
+            payment.hasDiscount ? `${(Number(payment.discountPercentage) || 0).toFixed(2)}%` : '',
             this.getPaymentMethodLabel(payment.paymentMethod) || '',
             this.getStatusLabel(payment.status) || '',
             date ? date.toLocaleDateString('ka-GE', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '',
