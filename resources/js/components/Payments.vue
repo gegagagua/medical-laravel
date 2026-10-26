@@ -76,6 +76,9 @@
             <p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
               ყველა გადახდის სრული ჩანაწერი
             </p>
+            <p v-if="filters.service" class="text-sm font-semibold text-blue-600 dark:text-blue-400 mt-1">
+              „{{ filters.service }}“: {{ selectedServiceCount }} ცალი
+            </p>
           </div>
 
           <div class="flex flex-1 flex-wrap items-end gap-3 min-w-0">
@@ -762,6 +765,12 @@ export default {
       if (!query) return this.serviceOptions;
       return this.serviceOptions.filter((name) => name.toLowerCase().includes(query));
     },
+    selectedServiceCount() {
+      if (!this.filters.service) return this.filteredPayments.length;
+      return this.filteredPayments.reduce((count, p) => {
+        return count + this.getPaymentServiceNames(p).filter(name => name === this.filters.service).length;
+      }, 0);
+    },
     totalRevenue() {
       return this.filteredPayments.filter(p => p.status === 'paid').reduce((sum, p) => sum + Number(p.amount), 0);
     },
@@ -1294,7 +1303,7 @@ export default {
               </tbody>
               <tfoot>
                 <tr>
-                  <td colspan="6" style="text-align: right;">ჯამი:</td>
+                  <td colspan="6" style="text-align: right;">${this.filters.service ? escapeHtml(`ჯამი (${this.selectedServiceCount} ცალი):`) : 'ჯამი:'}</td>
                   <td class="num">₾${totalAmount.toFixed(2)}</td>
                   <td colspan="3"></td>
                 </tr>
@@ -1375,7 +1384,10 @@ export default {
           0
         );
 
-        const footerRow = ['', '', '', '', '', '', 'ჯამი:', Number(totalAmount.toFixed(2)), '', '', '', '', ''];
+        const totalLabel = this.filters.service
+          ? `ჯამი (${this.selectedServiceCount} ცალი):`
+          : 'ჯამი:';
+        const footerRow = ['', '', '', '', '', '', totalLabel, Number(totalAmount.toFixed(2)), '', '', '', '', ''];
 
         const aoa = [headers, ...dataRows, footerRow];
         const worksheet = XLSX.utils.aoa_to_sheet(aoa);
