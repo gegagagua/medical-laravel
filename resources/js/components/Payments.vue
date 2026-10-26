@@ -158,6 +158,61 @@
                 </option>
               </select>
             </div>
+
+            <div ref="serviceFilter" class="relative w-full min-[480px]:w-auto min-[480px]:min-w-[200px]">
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">სერვისი</label>
+              <button
+                type="button"
+                @click="toggleServiceDropdown"
+                class="flex w-full items-center justify-between gap-2 py-2 px-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-left"
+              >
+                <span class="truncate" :class="{ 'text-gray-400 dark:text-gray-500': !filters.service }">
+                  {{ filters.service || 'ყველა' }}
+                </span>
+                <svg class="w-4 h-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              <div
+                v-if="serviceDropdownOpen"
+                class="absolute z-50 mt-1 w-full min-w-[240px] bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg"
+              >
+                <div class="p-2 border-b border-gray-200 dark:border-gray-700">
+                  <input
+                    ref="serviceSearchInput"
+                    v-model="serviceSearchQuery"
+                    type="text"
+                    placeholder="ძებნა სერვისში..."
+                    class="block w-full py-1.5 px-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+                <div class="max-h-60 overflow-y-auto py-1">
+                  <button
+                    type="button"
+                    @click="selectServiceFilter('')"
+                    class="block w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white"
+                    :class="{ 'bg-blue-50 dark:bg-blue-900/30': !filters.service }"
+                  >
+                    ყველა
+                  </button>
+                  <button
+                    v-for="svc in filteredServiceOptions"
+                    :key="svc"
+                    type="button"
+                    @click="selectServiceFilter(svc)"
+                    class="block w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white truncate"
+                    :class="{ 'bg-blue-50 dark:bg-blue-900/30': filters.service === svc }"
+                    :title="svc"
+                  >
+                    {{ svc }}
+                  </button>
+                  <p v-if="filteredServiceOptions.length === 0" class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+                    სერვისი არ მოიძებნა
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="flex flex-wrap items-center gap-2 shrink-0">
@@ -423,13 +478,16 @@ export default {
       error: '',
       editError: '',
       editingPaymentId: null,
+      serviceDropdownOpen: false,
+      serviceSearchQuery: '',
       filters: {
         datePreset: 'today',
         dateFrom: today,
         dateTo: today,
         paymentMethod: '',
         department: '',
-        doctor: ''
+        doctor: '',
+        service: ''
       },
       formData: {
         patient_id: '',
@@ -662,6 +720,10 @@ export default {
         filtered = filtered.filter(p => (p.doctor || '') === this.filters.doctor);
       }
 
+      if (this.filters.service) {
+        filtered = filtered.filter(p => this.getPaymentServiceNames(p).includes(this.filters.service));
+      }
+
       return filtered;
     },
     uniqueDepartments() {
@@ -679,6 +741,26 @@ export default {
         if (d) set.add(d);
       });
       return [...set].sort((a, b) => a.localeCompare(b, 'ka'));
+    },
+    serviceOptions() {
+      const set = new Set();
+      // All services from the services catalogue (300+)
+      (this.services || []).forEach((s) => {
+        const name = s && s.name != null ? String(s.name).trim() : '';
+        if (name) set.add(name);
+      });
+      // Include any service names present in payments but missing from the catalogue
+      (this.allPayments || []).forEach((p) => {
+        this.getPaymentServiceNames(p).forEach((name) => {
+          if (name) set.add(name);
+        });
+      });
+      return [...set].sort((a, b) => a.localeCompare(b, 'ka'));
+    },
+    filteredServiceOptions() {
+      const query = this.serviceSearchQuery.trim().toLowerCase();
+      if (!query) return this.serviceOptions;
+      return this.serviceOptions.filter((name) => name.toLowerCase().includes(query));
     },
     totalRevenue() {
       return this.filteredPayments.filter(p => p.status === 'paid').reduce((sum, p) => sum + Number(p.amount), 0);
@@ -705,11 +787,13 @@ export default {
     window.printPayment = (id) => this.printPayment(id);
     window.editPayment = (id) => this.openEditModal(id);
     window.deletePayment = (id) => this.deletePayment(id);
+    document.addEventListener('mousedown', this.handleServiceClickOutside);
   },
   beforeUnmount() {
     delete window.printPayment;
     delete window.editPayment;
     delete window.deletePayment;
+    document.removeEventListener('mousedown', this.handleServiceClickOutside);
   },
   methods: {
     parseDateTimeForDisplay(value) {
@@ -771,6 +855,42 @@ export default {
         this.filters.datePreset = 'custom';
       }
       this.applyFilters();
+    },
+    toggleServiceDropdown() {
+      this.serviceDropdownOpen = !this.serviceDropdownOpen;
+      if (this.serviceDropdownOpen) {
+        this.serviceSearchQuery = '';
+        this.$nextTick(() => {
+          if (this.$refs.serviceSearchInput) {
+            this.$refs.serviceSearchInput.focus();
+          }
+        });
+      }
+    },
+    selectServiceFilter(name) {
+      this.filters.service = name;
+      this.serviceDropdownOpen = false;
+      this.serviceSearchQuery = '';
+      this.applyFilters();
+    },
+    handleServiceClickOutside(event) {
+      if (!this.serviceDropdownOpen) return;
+      const el = this.$refs.serviceFilter;
+      if (el && !el.contains(event.target)) {
+        this.serviceDropdownOpen = false;
+      }
+    },
+    getPaymentServiceNames(payment) {
+      if (Array.isArray(payment?.servicesDiscounts) && payment.servicesDiscounts.length > 0) {
+        return payment.servicesDiscounts
+          .map((service) => String(service?.name || '').trim())
+          .filter(Boolean);
+      }
+      if (payment?.service) {
+        const services = Array.isArray(payment.service) ? payment.service : String(payment.service).split(',');
+        return services.map((name) => String(name).trim()).filter(Boolean);
+      }
+      return [];
     },
     extractPaymentDate(value) {
       if (!value) return '';
@@ -1070,6 +1190,9 @@ export default {
       }
       if (this.filters.doctor) {
         filterSummary.push(`ექიმი: ${this.filters.doctor}`);
+      }
+      if (this.filters.service) {
+        filterSummary.push(`სერვისი: ${this.filters.service}`);
       }
       const filterLine = filterSummary.length ? filterSummary.join(' · ') : '';
       const printedAt = new Date().toLocaleString('ka-GE', {

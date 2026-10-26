@@ -1,0 +1,11 @@
+DB_HOST = 34.107.47.147
+DB_PORT = 5432
+DB_USER = mdello
+DB_PASSWORD = 'AE<[r;.j@Co3dy8V'
+DB_NAME = mdello
+
+MONGO_URL = რანდომული მონგო
+M2_MONGO_URL = რანდომული მონგო
+ALCHEMIST_MONGO_URL = რანდომული მონგო
+
+JWT_TOKEN = '289f7f80-7bef-4abd-a921-7ecc08ef0e34'
