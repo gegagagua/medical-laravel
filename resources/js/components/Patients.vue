@@ -258,6 +258,7 @@
 <script>
 import axios from 'axios';
 import { useToastStore } from '../stores/toast';
+import { patientService } from '../services/patientService';
 import Navbar from './Navbar.vue';
 import Table from './ui/Table.vue';
 import Button from './ui/Button.vue';
@@ -421,17 +422,23 @@ export default {
     window.patientsComponent = this;
   },
   methods: {
-    async fetchPatients() {
+    async fetchPatients(force = false) {
+      // Show cached data instantly when available (no spinner flash)
+      const cached = patientService.getCachedPatients();
+      if (cached && !force) {
+        this.patients = cached;
+        this.loading = false;
+        return;
+      }
+
       this.loading = true;
       try {
-        const token = localStorage.getItem('auth_token');
-        const response = await axios.get('/api/patients', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        this.patients = response.data;
+        this.patients = await patientService.getPatients({ force });
       } catch (error) {
         console.error('Failed to fetch patients:', error);
-        this.patients = [];
+        if (!this.patients.length) {
+          this.patients = cached || [];
+        }
       } finally {
         this.loading = false;
       }
@@ -516,7 +523,7 @@ export default {
           this.toastStore.success('პაციენტი წარმატებით დაემატა');
         }
 
-        await this.fetchPatients();
+        await this.fetchPatients(true);
         this.error = '';
         this.isModalOpen = false;
         this.closeModal();
@@ -540,7 +547,7 @@ export default {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        await this.fetchPatients();
+        await this.fetchPatients(true);
         this.toastStore.success('პაციენტი წარმატებით წაიშალა');
       } catch (error) {
         console.error('Failed to delete patient:', error);

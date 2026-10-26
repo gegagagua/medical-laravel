@@ -308,6 +308,29 @@ import { paymentService } from '../services/paymentService';
 import { getTodayDateString, formatDateToInput } from '../utils/dateUtils';
 import { formatGeorgianDate } from '../utils/georgianDate';
 import Navbar from './Navbar.vue';
+
+// Birth date always in numeric DD.MM.YYYY format (e.g. 28.05.1992)
+function formatBirthDate(value) {
+  if (value === null || value === undefined || value === '') {
+    return '—';
+  }
+  const s = String(value).trim();
+  const pad = (n) => String(n).padStart(2, '0');
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) {
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const d = Number(m[3]);
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+      return `${pad(d)}.${pad(mo)}.${y}`;
+    }
+  }
+  const dt = new Date(s);
+  if (Number.isNaN(dt.getTime())) {
+    return '—';
+  }
+  return `${pad(dt.getDate())}.${pad(dt.getMonth() + 1)}.${dt.getFullYear()}`;
+}
 import Table from './ui/Table.vue';
 import Button from './ui/Button.vue';
 import Modal from './ui/Modal.vue';
@@ -392,7 +415,7 @@ export default {
               ? `<div class="text-[10px] text-gray-500 dark:text-gray-400">ასაკი: ${ageValue} წ.</div>`
               : '<div class="text-[10px] text-gray-500 dark:text-gray-400">ასაკი: -</div>';
             const dob = item.patientDateOfBirth
-              ? `<div class="text-[10px] text-gray-500 dark:text-gray-400">დაბ.: ${formatGeorgianDate(item.patientDateOfBirth)}</div>`
+              ? `<div class="text-[10px] text-gray-500 dark:text-gray-400">დაბ.: ${formatBirthDate(item.patientDateOfBirth)}</div>`
               : '';
             return `<div><div class="font-medium text-xs text-gray-900 dark:text-white">${value}</div>${idNumber}${phone}${age}${dob}</div>`;
           }
@@ -1339,7 +1362,7 @@ export default {
       const computedAge = computeAge(visit.patientDateOfBirth, visit.patientAge);
 
       const dobHtml = visit.patientDateOfBirth
-        ? `<br><small style="color: #666;">დაბადების თარიღი: ${formatGeorgianDate(visit.patientDateOfBirth)}</small>`
+        ? `<br><small style="color: #666;">დაბადების თარიღი: ${formatBirthDate(visit.patientDateOfBirth)}</small>`
         : '';
       const ageHtml = computedAge !== null
         ? `<br><small style="color: #666;">ასაკი: ${computedAge} წ.</small>`

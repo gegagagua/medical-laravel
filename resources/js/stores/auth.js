@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { clearPatientsCache } from '../services/patientService';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -21,19 +22,25 @@ export const useAuthStore = defineStore('auth', {
     setAuth(user, token) {
       this.user = user;
       this.token = token;
-      
+
       // Save to localStorage
       localStorage.setItem('auth_token', token);
       localStorage.setItem('user', JSON.stringify(user));
+
+      // Invalidate the patients cache so it refreshes on first login
+      clearPatientsCache();
     },
 
     logout() {
       this.user = null;
       this.token = null;
-      
+
       // Clear localStorage
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
+
+      // Drop cached patient data on logout
+      clearPatientsCache();
     },
 
     loadFromStorage() {

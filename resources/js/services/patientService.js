@@ -7,7 +7,56 @@ const getAuthHeaders = () => ({
   Accept: 'application/json',
 });
 
+const PATIENTS_CACHE_KEY = 'patients_cache';
+
+const readPatientsCache = () => {
+  try {
+    const raw = localStorage.getItem(PATIENTS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+};
+
+const writePatientsCache = (patients) => {
+  try {
+    localStorage.setItem(PATIENTS_CACHE_KEY, JSON.stringify(patients));
+  } catch (e) {
+    // Ignore storage quota / serialization errors — cache is best-effort
+  }
+};
+
+export const clearPatientsCache = () => {
+  localStorage.removeItem(PATIENTS_CACHE_KEY);
+};
+
 export const patientService = {
+  // Synchronously read the cached list (or null if none cached yet)
+  getCachedPatients() {
+    return readPatientsCache();
+  },
+
+  // Return cached patients when available; fetch from the server and cache otherwise.
+  // Pass { force: true } to bypass the cache and refresh it from the server.
+  async getPatients({ force = false } = {}) {
+    if (!force) {
+      const cached = readPatientsCache();
+      if (cached) return cached;
+    }
+    const response = await axios.get('/api/patients', {
+      headers: getAuthHeaders()
+    });
+    const list = Array.isArray(response.data) ? response.data : [];
+    writePatientsCache(list);
+    return list;
+  },
+
+  clearCache() {
+    clearPatientsCache();
+  },
+
   async getPatient(patientId) {
     const response = await axios.get(`/api/patients/${patientId}`, {
       headers: getAuthHeaders()
